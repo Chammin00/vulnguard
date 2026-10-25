@@ -1,0 +1,167 @@
+@model List<vulnerability_management.Models.VulnerabilityFinding>
+@{
+    ViewData["Title"] = "Vulnerability Findings";
+}
+
+<div class="top-navbar">
+    <div>
+        <h3 class="fw-bold mb-1 text-white"><i class="fa-solid fa-bug text-primary me-2"></i>Active Findings & Flaws</h3>
+        <p class="text-muted small mb-0">Correlated security findings across all inventoried fleet assets with SLA countdowns and ticket status.</p>
+    </div>
+    <div class="d-flex gap-2">
+        <a href="@Url.Action("ExportFindingsCsv", "Reports")" class="btn btn-vg-secondary">
+            <i class="fa-solid fa-file-csv me-1"></i> Export CSV
+        </a>
+        <a href="@Url.Action("Catalog", "Vulnerabilities")" class="btn btn-vg-primary">
+            <i class="fa-solid fa-book-skull me-1"></i> CVE Catalog
+        </a>
+    </div>
+</div>
+
+<!-- Filters Bar -->
+<div class="vg-card mb-4">
+    <form method="get" class="row g-2 align-items-center">
+        <div class="col-md-4">
+            <div class="input-group">
+                <span class="input-group-text bg-dark border-secondary text-secondary"><i class="fa-solid fa-magnifying-glass"></i></span>
+                <input type="text" name="search" class="form-control form-control-vg" placeholder="Search by CVE, asset, title, or assignee..." value="@ViewBag.Search" />
+            </div>
+        </div>
+        <div class="col-md-2">
+            <select name="severity" class="form-select form-select-vg">
+                <option value="">All Severities</option>
+                <option value="Critical" selected="@(ViewBag.Severity?.ToString() == "Critical")">Critical</option>
+                <option value="High" selected="@(ViewBag.Severity?.ToString() == "High")">High</option>
+                <option value="Medium" selected="@(ViewBag.Severity?.ToString() == "Medium")">Medium</option>
+                <option value="Low" selected="@(ViewBag.Severity?.ToString() == "Low")">Low</option>
+            </select>
+        </div>
+        <div class="col-md-2">
+            <select name="status" class="form-select form-select-vg">
+                <option value="">All Statuses</option>
+                <option value="Open" selected="@(ViewBag.Status?.ToString() == "Open")">Open</option>
+                <option value="InProgress" selected="@(ViewBag.Status?.ToString() == "InProgress")">In Progress</option>
+                <option value="Remediated" selected="@(ViewBag.Status?.ToString() == "Remediated")">Remediated</option>
+                <option value="AcceptedRisk" selected="@(ViewBag.Status?.ToString() == "AcceptedRisk")">Accepted Risk</option>
+            </select>
+        </div>
+        <div class="col-md-2">
+            <div class="form-check form-switch pt-2">
+                <input class="form-check-input" type="checkbox" name="cisaKevOnly" value="true" id="kevSwitch" @(ViewBag.CisaKevOnly == true ? "checked" : "")>
+                <label class="form-check-label text-warning small fw-bold" for="kevSwitch">CISA KEV Only</label>
+            </div>
+        </div>
+        <div class="col-md-2 d-flex gap-2">
+            <button type="submit" class="btn btn-vg-primary w-100">Filter</button>
+            <a href="@Url.Action("Index", "Vulnerabilities")" class="btn btn-vg-secondary"><i class="fa-solid fa-rotate-left"></i></a>
+        </div>
+    </form>
+</div>
+
+<!-- Findings Table Card -->
+<div class="vg-card">
+    <div class="table-responsive">
+        <table class="vg-table">
+            <thead>
+                <tr>
+                    <th>CVE Identifier</th>
+                    <th>Vulnerability Title</th>
+                    <th>Affected Asset</th>
+                    <th>Severity & CVSS</th>
+                    <th>Exploit (EPSS)</th>
+                    <th>Assignee</th>
+                    <th>SLA Due Date</th>
+                    <th>Status</th>
+                    <th>Action</th>
+                </tr>
+            </thead>
+            <tbody>
+                @if (!Model.Any())
+                {
+                    <tr>
+                        <td colspan="9" class="text-center py-5 text-muted">
+                            <i class="fa-solid fa-shield-check fs-2 text-success mb-2 d-block"></i>
+                            No vulnerability findings match the specified filter criteria.
+                        </td>
+                    </tr>
+                }
+                @foreach (var finding in Model)
+                {
+                    <tr>
+                        <td>
+                            <div class="fw-bold text-white">
+                                <a href="@Url.Action("Details", "Vulnerabilities", new { id = finding.Id })" class="text-white text-decoration-none">
+                                    @finding.Vulnerability?.CveId
+                                </a>
+                            </div>
+                            @if (finding.Vulnerability?.IsInCisaKev == true)
+                            {
+                                <span class="badge-kev">CISA KEV</span>
+                            }
+                        </td>
+                        <td style="max-width: 250px;">
+                            <div class="text-white small fw-medium text-truncate">@finding.Vulnerability?.Title</div>
+                            <div class="text-muted small text-truncate">@finding.Vulnerability?.AffectedComponent</div>
+                        </td>
+                        <td>
+                            <div class="text-white small fw-semibold">
+                                <a href="@Url.Action("Details", "Assets", new { id = finding.AssetId })" class="text-white text-decoration-none">
+                                    @finding.Asset?.Hostname
+                                </a>
+                            </div>
+                            <div class="mono text-muted" style="font-size: 0.75rem;">@finding.Asset?.IpAddress @(!string.IsNullOrEmpty(finding.AffectedPort) ? $"({finding.AffectedPort})" : "")</div>
+                        </td>
+                        <td>
+                            @if (finding.Vulnerability?.Severity == SeverityLevel.Critical)
+                            {
+                                <span class="badge-severity-critical">CRIT @finding.Vulnerability.CvssScore</span>
+                            }
+                            else if (finding.Vulnerability?.Severity == SeverityLevel.High)
+                            {
+                                <span class="badge-severity-high">HIGH @finding.Vulnerability.CvssScore</span>
+                            }
+                            else if (finding.Vulnerability?.Severity == SeverityLevel.Medium)
+                            {
+                                <span class="badge-severity-medium">MED @finding.Vulnerability.CvssScore</span>
+                            }
+                            else
+                            {
+                                <span class="badge-severity-low">LOW @(finding.Vulnerability?.CvssScore ?? 0.0)</span>
+                            }
+                        </td>
+                        <td>
+                            <div class="small fw-semibold text-@((finding.Vulnerability?.EpssScore ?? 0) > 0.5 ? "danger" : "secondary")">
+                                @(((finding.Vulnerability?.EpssScore ?? 0) * 100).ToString("0.0"))%
+                            </div>
+                        </td>
+                        <td>
+                            <span class="text-secondary small">@(string.IsNullOrEmpty(finding.AssignedTo) ? "Unassigned" : finding.AssignedTo)</span>
+                        </td>
+                        <td>
+                            @if (finding.Status == FindingStatus.Remediated)
+                            {
+                                <span class="badge bg-success-subtle text-success small">Remediated</span>
+                            }
+                            else if (finding.IsSlaBreached)
+                            {
+                                <span class="badge bg-danger text-white"><i class="fa-solid fa-triangle-exclamation me-1"></i> Overdue</span>
+                            }
+                            else
+                            {
+                                <span class="small text-secondary">@finding.DaysRemaining d left</span>
+                            }
+                        </td>
+                        <td>
+                            <span class="badge-status-@finding.Status.ToString().ToLower()">@finding.Status</span>
+                        </td>
+                        <td>
+                            <a href="@Url.Action("Details", "Vulnerabilities", new { id = finding.Id })" class="btn btn-vg-secondary btn-sm py-1 px-2">
+                                <i class="fa-solid fa-arrow-right"></i>
+                            </a>
+                        </td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+</div>

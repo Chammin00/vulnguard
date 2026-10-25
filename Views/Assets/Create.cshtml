@@ -1,0 +1,80 @@
+@model vulnerability_management.Models.Asset
+@{
+    ViewData["Title"] = "Add New Asset";
+}
+
+<div class="top-navbar">
+    <div>
+        <div class="d-flex align-items-center gap-2 mb-1">
+            <a href="@Url.Action("Index", "Assets")" class="text-muted text-decoration-none small">&larr; Back to Assets</a>
+            <span class="text-muted">/</span>
+            <span class="text-white small">New Asset</span>
+        </div>
+        <h3 class="fw-bold mb-0 text-white"><i class="fa-solid fa-plus-circle text-primary me-2"></i>Register New Asset</h3>
+    </div>
+</div>
+
+<div class="row justify-content-center">
+    <div class="col-lg-8">
+        <div class="vg-card">
+            <form method="post" action="@Url.Action("Create", "Assets")">
+                @Html.AntiForgeryToken()
+                <div class="row g-3">
+                    <div class="col-md-6">
+                        <label class="form-label text-muted small">Hostname</label>
+                        <input asp-for="Hostname" class="form-control form-control-vg" placeholder="e.g. prd-app-server01.corp" required />
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label text-muted small">IP Address</label>
+                        <input asp-for="IpAddress" class="form-control form-control-vg mono" placeholder="e.g. 10.0.10.15" required />
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label text-muted small">MAC Address (Optional)</label>
+                        <input asp-for="MacAddress" class="form-control form-control-vg mono" placeholder="e.g. 00:50:56:A1:2B:99" />
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label text-muted small">Operating System</label>
+                        <input asp-for="OperatingSystem" class="form-control form-control-vg" placeholder="e.g. Ubuntu 22.04 LTS / Windows Server 2022" />
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label text-muted small">Environment</label>
+                        <select asp-for="Environment" class="form-select form-select-vg">
+                            <option value="Production">Production</option>
+                            <option value="Staging">Staging</option>
+                            <option value="Development">Development</option>
+                            <option value="DMZ">DMZ</option>
+                            <option value="Internal">Internal</option>
+                        </select>
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label text-muted small">Criticality Tier</label>
+                        <select asp-for="Criticality" class="form-select form-select-vg">
+                            <option value="Tier1_MissionCritical">Tier 1 - Mission Critical</option>
+                            <option value="Tier2_BusinessImportant" selected>Tier 2 - Business Important</option>
+                            <option value="Tier3_Standard">Tier 3 - Standard</option>
+                            <option value="Tier4_Low">Tier 4 - Low Impact</option>
+                        </select>
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label text-muted small">Owner / Team Custodian</label>
+                        <input asp-for="Owner" class="form-control form-control-vg" placeholder="e.g. DevOps Team / SecOps" />
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label text-muted small">Tags (Comma-separated)</label>
+                        <input asp-for="Tags" class="form-control form-control-vg" placeholder="e.g. web, database, cloud, production" />
+                    </div>
+                    <div class="col-12">
+                        <label class="form-label text-muted small">Known Open Ports & Services</label>
+                        <input asp-for="OpenPorts" class="form-control form-control-vg mono" placeholder="e.g. 22/SSH, 80/HTTP, 443/HTTPS" />
+                    </div>
+                    <div class="col-12 d-flex justify-content-end gap-2 mt-4 pt-3 border-top border-secondary-subtle">
+                        <a href="@Url.Action("Index", "Assets")" class="btn btn-vg-secondary">Cancel</a>
+                        <button type="submit" class="btn btn-vg-primary">
+                            <i class="fa-solid fa-save me-1"></i> Save Asset
+                        </button>
+                    </div>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>

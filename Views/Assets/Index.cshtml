@@ -1,0 +1,148 @@
+@model List<vulnerability_management.Models.Asset>
+@{
+    ViewData["Title"] = "Asset Inventory & Attack Surface";
+    var riskService = ViewBag.RiskScoringService as vulnerability_management.Services.IRiskScoringService;
+}
+
+<div class="top-navbar">
+    <div>
+        <h3 class="fw-bold mb-1 text-white"><i class="fa-solid fa-server text-primary me-2"></i>Asset Inventory & Attack Surface</h3>
+        <p class="text-muted small mb-0">Discovered hosts, operating systems, environment tiers, open service ports, and correlated risk scores.</p>
+    </div>
+    <div class="d-flex gap-2">
+        <a href="@Url.Action("ExportAssetsJson", "Reports")" class="btn btn-vg-secondary">
+            <i class="fa-solid fa-download me-1"></i> Export JSON
+        </a>
+        <a href="@Url.Action("Create", "Assets")" class="btn btn-vg-primary">
+            <i class="fa-solid fa-plus me-1"></i> Add Asset
+        </a>
+    </div>
+</div>
+
+<!-- Filters Bar -->
+<div class="vg-card mb-4">
+    <form method="get" class="row g-2 align-items-center">
+        <div class="col-md-5">
+            <div class="input-group">
+                <span class="input-group-text bg-dark border-secondary text-secondary"><i class="fa-solid fa-magnifying-glass"></i></span>
+                <input type="text" name="search" class="form-control form-control-vg" placeholder="Search by hostname, IP, OS, tags, or owner..." value="@ViewBag.Search" />
+            </div>
+        </div>
+        <div class="col-md-3">
+            <select name="env" class="form-select form-select-vg">
+                <option value="">All Environments</option>
+                <option value="Production" selected="@(ViewBag.Env?.ToString() == "Production")">Production</option>
+                <option value="Staging" selected="@(ViewBag.Env?.ToString() == "Staging")">Staging</option>
+                <option value="Development" selected="@(ViewBag.Env?.ToString() == "Development")">Development</option>
+                <option value="DMZ" selected="@(ViewBag.Env?.ToString() == "DMZ")">DMZ</option>
+            </select>
+        </div>
+        <div class="col-md-2">
+            <select name="tier" class="form-select form-select-vg">
+                <option value="">All Criticality</option>
+                <option value="Tier1_MissionCritical" selected="@(ViewBag.Tier?.ToString() == "Tier1_MissionCritical")">Tier 1: Mission Critical</option>
+                <option value="Tier2_BusinessImportant" selected="@(ViewBag.Tier?.ToString() == "Tier2_BusinessImportant")">Tier 2: Business Important</option>
+                <option value="Tier3_Standard" selected="@(ViewBag.Tier?.ToString() == "Tier3_Standard")">Tier 3: Standard</option>
+                <option value="Tier4_Low" selected="@(ViewBag.Tier?.ToString() == "Tier4_Low")">Tier 4: Low</option>
+            </select>
+        </div>
+        <div class="col-md-2 d-flex gap-2">
+            <button type="submit" class="btn btn-vg-primary w-100">Filter</button>
+            <a href="@Url.Action("Index", "Assets")" class="btn btn-vg-secondary"><i class="fa-solid fa-rotate-left"></i></a>
+        </div>
+    </form>
+</div>
+
+<!-- Assets Table Card -->
+<div class="vg-card">
+    <div class="table-responsive">
+        <table class="vg-table">
+            <thead>
+                <tr>
+                    <th>Hostname & IP</th>
+                    <th>Environment</th>
+                    <th>Criticality</th>
+                    <th>Operating System</th>
+                    <th>Open Ports & Services</th>
+                    <th>Active Findings</th>
+                    <th>Risk Score</th>
+                    <th>Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                @if (!Model.Any())
+                {
+                    <tr>
+                        <td colspan="8" class="text-center py-5 text-muted">
+                            <i class="fa-solid fa-folder-open fs-2 mb-2 d-block"></i>
+                            No assets found matching the search criteria.
+                        </td>
+                    </tr>
+                }
+                @foreach (var asset in Model)
+                {
+                    var openFindings = asset.Findings.Count(f => f.Status == FindingStatus.Open || f.Status == FindingStatus.InProgress);
+                    var criticalFindings = asset.Findings.Count(f => (f.Status == FindingStatus.Open || f.Status == FindingStatus.InProgress) && f.Vulnerability?.Severity == SeverityLevel.Critical);
+                    var score = riskService != null ? riskService.CalculateAssetRiskScore(asset) : 0;
+
+                    <tr>
+                        <td>
+                            <div class="fw-bold text-white">
+                                <a href="@Url.Action("Details", "Assets", new { id = asset.Id })" class="text-white text-decoration-none">
+                                    @asset.Hostname
+                                </a>
+                            </div>
+                            <div class="mono text-muted small">@asset.IpAddress</div>
+                        </td>
+                        <td>
+                            <span class="badge bg-secondary-subtle text-light">@asset.Environment</span>
+                        </td>
+                        <td>
+                            <span class="badge bg-dark border border-secondary text-secondary">
+                                @asset.Criticality.ToString().Replace("Tier1_", "T1: ").Replace("Tier2_", "T2: ").Replace("Tier3_", "T3: ").Replace("Tier4_", "T4: ")
+                            </span>
+                        </td>
+                        <td>
+                            <div class="text-white small">@asset.OperatingSystem</div>
+                            <div class="text-muted" style="font-size: 0.75rem;">@asset.Owner</div>
+                        </td>
+                        <td style="max-width: 250px;">
+                            <div class="small text-truncate text-secondary">
+                                @asset.OpenPorts
+                            </div>
+                        </td>
+                        <td>
+                            @if (criticalFindings > 0)
+                            {
+                                <span class="badge-severity-critical">@criticalFindings Crit</span>
+                            }
+                            @if (openFindings > 0)
+                            {
+                                <span class="badge bg-danger-subtle text-danger-emphasis">@openFindings Active</span>
+                            }
+                            else
+                            {
+                                <span class="badge bg-success-subtle text-success-emphasis">0 Findings</span>
+                            }
+                        </td>
+                        <td>
+                            <span class="fw-bold text-@(score > 70 ? "danger" : score > 35 ? "warning" : "success")">
+                                @score
+                            </span>
+                        </td>
+                        <td>
+                            <div class="d-flex gap-1">
+                                <a href="@Url.Action("Details", "Assets", new { id = asset.Id })" class="btn btn-vg-secondary btn-sm py-1 px-2" title="Inspect Asset">
+                                    <i class="fa-solid fa-eye"></i>
+                                </a>
+                                <a href="@Url.Action("Edit", "Assets", new { id = asset.Id })" class="btn btn-vg-secondary btn-sm py-1 px-2" title="Edit Specs">
+                                    <i class="fa-solid fa-pen"></i>
+                                </a>
+                            </div>
+                        </td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+</div>

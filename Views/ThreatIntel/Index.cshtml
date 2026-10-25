@@ -1,0 +1,64 @@
+@model List<vulnerability_management.Models.Vulnerability>
+@{
+    ViewData["Title"] = "CISA KEV Threat Intelligence Feed";
+}
+
+<div class="top-navbar">
+    <div>
+        <h3 class="fw-bold mb-1 text-white"><i class="fa-solid fa-bolt-lightning text-warning me-2"></i>CISA Known Exploited Vulnerabilities (KEV) Catalog</h3>
+        <p class="text-muted small mb-0">Direct intelligence stream of vulnerabilities with active, weaponized in-the-wild exploitation tracked by US Cybersecurity & Infrastructure Security Agency.</p>
+    </div>
+</div>
+
+<!-- CVE Direct Lookup & Filter -->
+<div class="vg-card mb-4">
+    <div class="row g-3 align-items-center">
+        <div class="col-md-7">
+            <form method="get" action="@Url.Action("Index", "ThreatIntel")" class="d-flex gap-2">
+                <div class="input-group">
+                    <span class="input-group-text bg-dark border-secondary text-secondary"><i class="fa-solid fa-magnifying-glass"></i></span>
+                    <input type="text" name="search" class="form-control form-control-vg" placeholder="Filter CISA KEV list by keyword or component..." value="@ViewBag.Search" />
+                </div>
+                <button type="submit" class="btn btn-vg-primary">Filter</button>
+            </form>
+        </div>
+        <div class="col-md-5">
+            <form method="get" action="@Url.Action("Lookup", "ThreatIntel")" class="d-flex gap-2">
+                <input type="text" name="cveId" class="form-control form-control-vg mono" placeholder="Lookup CVE (e.g. CVE-2021-44228)" required />
+                <button type="submit" class="btn btn-warning text-dark fw-bold"><i class="fa-solid fa-search me-1"></i> Lookup</button>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- KEV Grid -->
+<div class="row g-3">
+    @foreach (var kev in Model)
+    {
+        <div class="col-md-6">
+            <div class="vg-card h-100 d-flex flex-column justify-content-between border-danger-subtle" style="border-left: 4px solid #ef4444;">
+                <div>
+                    <div class="d-flex align-items-center justify-content-between mb-2">
+                        <div class="d-flex align-items-center gap-2">
+                            <span class="fw-bold text-white fs-5 mono">@kev.CveId</span>
+                            <span class="badge-kev">ACTIVE EXPLOIT</span>
+                        </div>
+                        <span class="badge-severity-critical">CVSS @kev.CvssScore</span>
+                    </div>
+
+                    <h6 class="text-white mb-2">@kev.Title</h6>
+                    <p class="text-secondary small mb-3">@kev.Description</p>
+                </div>
+
+                <div class="border-top border-secondary-subtle pt-3 mt-2">
+                    <div class="d-flex justify-content-between align-items-center small">
+                        <span class="text-muted">EPSS Likelihood: <strong class="text-danger">@((kev.EpssScore * 100).ToString("0.0"))%</strong></span>
+                        <a href="@kev.ReferenceUrl" target="_blank" class="text-primary text-decoration-none small">
+                            NVD Advisory <i class="fa-solid fa-arrow-up-right-from-square"></i>
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    }
+</div>

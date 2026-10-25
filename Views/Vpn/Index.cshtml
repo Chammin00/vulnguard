@@ -1,0 +1,322 @@
+@model vulnerability_management.Models.VpnDashboardViewModel
+@{
+    ViewData["Title"] = "VulnGuard SecureVPN Tunnel & WireGuard Sentry";
+    var profile = Model.GeneratedProfile;
+    var status = Model.Status;
+}
+
+<div class="top-navbar">
+    <div>
+        <div class="d-flex align-items-center gap-2 mb-1">
+            <a href="@Url.Action("Index", "Dashboard")" class="text-muted text-decoration-none small">&larr; Back to Dashboard</a>
+            <span class="text-muted">/</span>
+            <span class="text-white small">Encrypted Boundary</span>
+        </div>
+        <h3 class="fw-bold mb-0 text-white"><i class="fa-solid fa-shield-halved text-success me-2"></i>VulnGuard SecureVPN Tunnel & WireGuard Sentry</h3>
+    </div>
+    <div class="d-flex gap-2">
+        <form method="post" action="@Url.Action("ToggleConnection", "Vpn")" class="m-0">
+            @Html.AntiForgeryToken()
+            <input type="hidden" name="connect" value="@((!status.IsConnected).ToString().ToLower())" />
+            <input type="hidden" name="serverId" value="@Model.CurrentRequest.ServerId" />
+            <button type="submit" class="btn @(status.IsConnected ? "btn-outline-danger" : "btn-vg-primary")">
+                <i class="fa-solid @(status.IsConnected ? "fa-power-off" : "fa-shield-halved") me-1"></i>
+                @(status.IsConnected ? "Disconnect Tunnel" : "Connect Secure Tunnel")
+            </button>
+        </form>
+    </div>
+</div>
+
+@if (TempData["SuccessMessage"] != null)
+{
+    <div class="alert alert-success alert-dismissible fade show mb-4 bg-dark border-success text-success" role="alert">
+        <i class="fa-solid fa-check-circle me-2"></i> @TempData["SuccessMessage"]
+        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="alert" aria-label="Close"></button>
+    </div>
+}
+
+<!-- Top Live Connection Telemetry Banner -->
+<div class="row g-4 mb-4">
+    <!-- Active Status Card -->
+    <div class="col-lg-5">
+        <div class="vg-card h-100 p-4 d-flex flex-column justify-content-between" style="background: linear-gradient(180deg, #0d1a29 0%, #0a1320 100%);">
+            <div>
+                <div class="d-flex justify-content-between align-items-center mb-2">
+                    <span class="kpi-title"><i class="fa-solid fa-satellite-dish text-info me-1"></i> Tunnel Status</span>
+                    <span class="badge @(status.IsConnected ? "bg-success" : "bg-danger") px-3 py-1 fs-6">
+                        @(status.IsConnected ? "ENCRYPTED & PROTECTED" : "DISCONNECTED")
+                    </span>
+                </div>
+
+                <div class="my-3">
+                    <div class="text-muted small">Masked Virtual IP Address</div>
+                    <div class="display-6 fw-bold mono text-white">@(status.IsConnected ? status.PublicMaskedIp : "192.168.1.185 (Exposed)")</div>
+                </div>
+
+                <div class="row g-2 small border-top border-secondary-subtle pt-3">
+                    <div class="col-6">
+                        <span class="text-muted">Connected Node:</span>
+                        <div class="fw-bold text-white">@status.ActiveServer.FlagEmoji @status.ActiveServer.Country (@status.ActiveServer.City)</div>
+                    </div>
+                    <div class="col-6">
+                        <span class="text-muted">Protocol & Cipher:</span>
+                        <div class="fw-bold text-info">@status.ActiveProtocol (@status.CipherSuite)</div>
+                    </div>
+                    <div class="col-6 mt-2">
+                        <span class="text-muted">Bandwidth In / Out:</span>
+                        <div class="text-light">↓ @status.BytesReceivedMb MB / ↑ @status.BytesSentMb MB</div>
+                    </div>
+                    <div class="col-6 mt-2">
+                        <span class="text-muted">Uptime:</span>
+                        <div class="text-light">@status.Uptime.TotalMinutes.ToString("0") mins active</div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="d-flex gap-2 mt-3 pt-2 border-top border-secondary-subtle">
+                <span class="badge bg-success-subtle text-success small"><i class="fa-solid fa-shield-check me-1"></i> Kill Switch Active</span>
+                <span class="badge bg-success-subtle text-success small"><i class="fa-solid fa-lock me-1"></i> DNS Leak Proof</span>
+                <span class="badge bg-success-subtle text-success small"><i class="fa-solid fa-network-wired me-1"></i> IPv6 Shield</span>
+            </div>
+        </div>
+    </div>
+
+    <!-- Global Server Nodes Quick Fleet -->
+    <div class="col-lg-7">
+        <div class="vg-card h-100">
+            <div class="vg-card-header">
+                <h6 class="vg-card-title text-white"><i class="fa-solid fa-globe text-primary"></i> Global Edge VPN Gateway Fleet (@Model.ServerLocations.Count Locations)</h6>
+                <span class="badge bg-dark border border-secondary text-light">10 Gbps Backbone</span>
+            </div>
+            <div class="table-responsive" style="max-height: 230px; overflow-y: auto;">
+                <table class="vg-table">
+                    <thead>
+                        <tr>
+                            <th>Location</th>
+                            <th>Jurisdiction & Privacy</th>
+                            <th>Latency</th>
+                            <th>Load</th>
+                            <th>Action</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var server in Model.ServerLocations)
+                        {
+                            <tr>
+                                <td>
+                                    <div class="fw-bold text-white small">@server.FlagEmoji @server.Country</div>
+                                    <div class="text-muted" style="font-size: 0.72rem;">@server.City (@server.EndpointHost)</div>
+                                </td>
+                                <td>
+                                    <div class="small text-secondary text-truncate" style="max-width: 220px;" title="@server.Jurisdiction">@server.Jurisdiction</div>
+                                </td>
+                                <td>
+                                    <span class="mono small text-@(server.LatencyMs < 40 ? "success" : server.LatencyMs < 80 ? "warning" : "secondary")">@server.LatencyMs ms</span>
+                                </td>
+                                <td>
+                                    <div class="d-flex align-items-center gap-1">
+                                        <div class="progress bg-dark flex-grow-1" style="height: 6px; width: 50px;">
+                                            <div class="progress-bar bg-@(server.LoadPercent > 70 ? "danger" : server.LoadPercent > 40 ? "warning" : "success")" style="width: @(server.LoadPercent)%"></div>
+                                        </div>
+                                        <span class="mono" style="font-size: 0.7rem;">@server.LoadPercent%</span>
+                                    </div>
+                                </td>
+                                <td>
+                                    <a href="@Url.Action("Index", "Vpn", new { serverId = server.Id })" class="btn btn-vg-secondary btn-sm py-1 px-2 text-info" title="Select Server">
+                                        <i class="fa-solid fa-crosshairs"></i> Select
+                                    </a>
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- VPN Profile Generator Studio -->
+<div class="row g-4 mb-4">
+    <!-- Left: Profile Configuration Form -->
+    <div class="col-lg-4">
+        <div class="vg-card h-100">
+            <div class="vg-card-header">
+                <h6 class="vg-card-title text-white"><i class="fa-solid fa-sliders text-primary"></i> Tunnel Configuration</h6>
+            </div>
+            <form method="post" action="@Url.Action("Generate", "Vpn")">
+                @Html.AntiForgeryToken()
+                <div class="mb-3">
+                    <label class="form-label text-muted small">Select VPN Gateway Location</label>
+                    <select name="ServerId" class="form-select form-control-vg">
+                        @foreach (var s in Model.ServerLocations)
+                        {
+                            <!option value="@s.Id" @(Model.CurrentRequest.ServerId == s.Id ? "selected" : "")>@s.FlagEmoji @s.Country (@s.City) - @s.LatencyMs ms</!option>
+                        }
+                    </select>
+                </div>
+
+                <div class="mb-3">
+                    <label class="form-label text-muted small">Tunnel Protocol</label>
+                    <select name="Protocol" class="form-select form-control-vg">
+                        <!option value="WireGuard" @(Model.CurrentRequest.Protocol == vulnerability_management.Models.VpnProtocol.WireGuard ? "selected" : "")>WireGuard (ChaCha20 / Ultra-Fast UDP)</!option>
+                        <!option value="OpenVPN_UDP" @(Model.CurrentRequest.Protocol == vulnerability_management.Models.VpnProtocol.OpenVPN_UDP ? "selected" : "")>OpenVPN UDP (AES-256-GCM / Standard)</!option>
+                        <!option value="OpenVPN_TCP" @(Model.CurrentRequest.Protocol == vulnerability_management.Models.VpnProtocol.OpenVPN_TCP ? "selected" : "")>OpenVPN TCP (Port 443 / Stealth Bypass)</!option>
+                    </select>
+                </div>
+
+                <div class="mb-3">
+                    <label class="form-label text-muted small">Client Device Identifier</label>
+                    <input type="text" name="ClientName" class="form-control form-control-vg mono" value="@Model.CurrentRequest.ClientName" required />
+                </div>
+
+                <div class="mb-3">
+                    <label class="form-label text-muted small">Encrypted DNS Resolver</label>
+                    <select name="DnsProvider" class="form-select form-control-vg">
+                        <!option value="CloudflareMalwareBlock" @(Model.CurrentRequest.DnsProvider == "CloudflareMalwareBlock" ? "selected" : "")>Cloudflare 1.1.1.2 (Malware Blocking)</!option>
+                        <!option value="Quad9" @(Model.CurrentRequest.DnsProvider == "Quad9" ? "selected" : "")>Quad9 9.9.9.9 (Threat Intelligence Filtering)</!option>
+                        <!option value="AdGuard" @(Model.CurrentRequest.DnsProvider == "AdGuard" ? "selected" : "")>AdGuard DNS 94.140.14.14 (Ad & Tracker Block)</!option>
+                    </select>
+                </div>
+
+                <div class="d-grid gap-2 border-top border-secondary-subtle pt-3">
+                    <button type="submit" class="btn btn-vg-primary py-2">
+                        <i class="fa-solid fa-key me-1"></i> Generate Cryptographic Keys & Profile
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Right: Generated Config & WireGuard QR Code -->
+    <div class="col-lg-8">
+        @if (profile != null)
+        {
+            <div class="vg-card h-100">
+                <div class="vg-card-header">
+                    <div>
+                        <h6 class="vg-card-title text-white"><i class="fa-solid fa-file-code text-success"></i> Generated Profile: @profile.FileName</h6>
+                        <span class="text-muted small">Encrypted for @profile.Server.Country (@profile.Server.City)</span>
+                    </div>
+                    <div class="d-flex gap-2">
+                        <a href="@Url.Action("DownloadConfig", "Vpn", new { serverId = profile.Server.Id, clientName = profile.ClientName, protocol = profile.Protocol })" class="btn btn-vg-primary btn-sm">
+                            <i class="fa-solid fa-download me-1"></i> Download @(profile.Protocol == vulnerability_management.Models.VpnProtocol.WireGuard ? ".conf" : ".ovpn") File
+                        </a>
+                    </div>
+                </div>
+
+                <div class="row g-3">
+                    <!-- Config Text Block -->
+                    <div class="col-lg-8">
+                        <div class="d-flex justify-content-between align-items-center mb-1">
+                            <span class="mono text-muted small">Configuration File Content</span>
+                            <button type="button" class="btn btn-link btn-sm text-secondary p-0 copy-cfg-btn" data-cfg="@profile.ConfigFileContent">
+                                <i class="fa-solid fa-copy me-1"></i> Copy Config
+                            </button>
+                        </div>
+                        <textarea class="form-control form-control-vg mono small" rows="12" readonly style="font-size: 0.72rem; line-height: 1.35;">@profile.ConfigFileContent</textarea>
+                    </div>
+
+                    <!-- WireGuard Mobile QR Code / Instructions -->
+                    <div class="col-lg-4">
+                        <div class="p-3 bg-dark rounded border border-secondary-subtle text-center h-100 d-flex flex-column justify-content-between">
+                            <div>
+                                <div class="fw-bold text-white small mb-1"><i class="fa-solid fa-qrcode text-info me-1"></i> Mobile App QR Import</div>
+                                <p class="text-muted" style="font-size: 0.72rem;">Scan directly from the official <strong>WireGuard</strong> iOS/Android app to connect instantly.</p>
+                                
+                                <!-- Rendered Mock SVG QR Code Box -->
+                                <div class="p-2 bg-white rounded my-2 mx-auto d-inline-block" style="width: 140px; height: 140px;">
+                                    <svg viewBox="0 0 100 100" width="100%" height="100%">
+                                        <rect x="0" y="0" width="100" height="100" fill="white" />
+                                        <!-- Top Left Anchor -->
+                                        <rect x="5" y="5" width="30" height="30" fill="black" />
+                                        <rect x="10" y="10" width="20" height="20" fill="white" />
+                                        <rect x="15" y="15" width="10" height="10" fill="black" />
+                                        <!-- Top Right Anchor -->
+                                        <rect x="65" y="5" width="30" height="30" fill="black" />
+                                        <rect x="70" y="10" width="20" height="20" fill="white" />
+                                        <rect x="75" y="15" width="10" height="10" fill="black" />
+                                        <!-- Bottom Left Anchor -->
+                                        <rect x="5" y="65" width="30" height="30" fill="black" />
+                                        <rect x="10" y="70" width="20" height="20" fill="white" />
+                                        <rect x="15" y="75" width="10" height="10" fill="black" />
+                                        <!-- Data Matrix Pixels -->
+                                        <rect x="42" y="12" width="6" height="6" fill="black" />
+                                        <rect x="50" y="20" width="6" height="6" fill="black" />
+                                        <rect x="42" y="28" width="6" height="6" fill="black" />
+                                        <rect x="12" y="42" width="6" height="6" fill="black" />
+                                        <rect x="25" y="50" width="6" height="6" fill="black" />
+                                        <rect x="42" y="42" width="16" height="16" fill="black" />
+                                        <rect x="45" y="45" width="10" height="10" fill="white" />
+                                        <rect x="68" y="42" width="6" height="6" fill="black" />
+                                        <rect x="80" y="50" width="6" height="6" fill="black" />
+                                        <rect x="68" y="68" width="8" height="8" fill="black" />
+                                        <rect x="80" y="80" width="8" height="8" fill="black" />
+                                        <rect x="42" y="75" width="6" height="6" fill="black" />
+                                        <rect x="52" y="85" width="6" height="6" fill="black" />
+                                    </svg>
+                                </div>
+                            </div>
+
+                            <div class="text-muted" style="font-size: 0.68rem;">
+                                Curve25519 Ephemeral Key
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        }
+    </div>
+</div>
+
+<!-- Windows Kill-Switch Hardening Drawer -->
+<div class="vg-card mb-4">
+    <div class="vg-card-header">
+        <h6 class="vg-card-title text-white"><i class="fa-solid fa-shield-virus text-warning"></i> Windows Zero-Leak VPN Kill-Switch Hardening Script</h6>
+        <button type="button" class="btn btn-vg-secondary btn-sm copy-ks-btn" data-ks="@(profile?.KillSwitchScript ?? "")">
+            <i class="fa-solid fa-copy me-1"></i> Copy PowerShell Kill-Switch Script
+        </button>
+    </div>
+    <p class="text-muted small mb-2">
+        A VPN Kill-Switch ensures that if your secure VPN tunnel connection ever drops, all unencrypted outbound internet traffic is instantly blocked by Windows Firewall, guaranteeing that your real IP address and DNS requests are never exposed.
+    </p>
+    <div class="p-3 bg-dark rounded border border-secondary-subtle">
+        <div class="mono text-info small" style="font-size: 0.72rem; line-height: 1.35;">
+            netsh advfirewall set allprofiles firewallpolicy blockinbound,blockoutbound<br />
+            netsh advfirewall firewall add rule name="VulnGuard-VPN-Tunnel-Allow" dir=out action=allow protocol=UDP remoteport=51820<br />
+            netsh advfirewall firewall add rule name="VulnGuard-VPN-DNS-Allow" dir=out action=allow protocol=UDP remoteport=53<br />
+            netsh advfirewall firewall add rule name="VulnGuard-VPN-Interface-Allow" dir=out action=allow interfacename="vulnguard-wg0"
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+<script>
+    document.addEventListener('DOMContentLoaded', () => {
+        const copyCfgBtn = document.querySelector('.copy-cfg-btn');
+        if (copyCfgBtn) {
+            copyCfgBtn.addEventListener('click', () => {
+                const cfg = copyCfgBtn.getAttribute('data-cfg');
+                if (cfg) {
+                    navigator.clipboard.writeText(cfg).then(() => {
+                        copyCfgBtn.innerHTML = '<i class="fa-solid fa-check text-success me-1"></i> Copied';
+                        setTimeout(() => { copyCfgBtn.innerHTML = '<i class="fa-solid fa-copy me-1"></i> Copy Config'; }, 1500);
+                    });
+                }
+            });
+        }
+
+        const copyKsBtn = document.querySelector('.copy-ks-btn');
+        if (copyKsBtn) {
+            copyKsBtn.addEventListener('click', () => {
+                const ks = copyKsBtn.getAttribute('data-ks');
+                if (ks) {
+                    navigator.clipboard.writeText(ks).then(() => {
+                        copyKsBtn.innerHTML = '<i class="fa-solid fa-check text-success me-1"></i> Copied Script';
+                        setTimeout(() => { copyKsBtn.innerHTML = '<i class="fa-solid fa-copy me-1"></i> Copy PowerShell Kill-Switch Script'; }, 1500);
+                    });
+                }
+            });
+        }
+    });
+</script>
+}

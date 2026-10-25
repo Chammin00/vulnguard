@@ -1,0 +1,260 @@
+@model vulnerability_management.Models.LocalSmartScanResult
+@{
+    ViewData["Title"] = "Local PC Smart Security Audit";
+}
+
+<div class="top-navbar">
+    <div>
+        <div class="d-flex align-items-center gap-2 mb-1">
+            <a href="@Url.Action("Index", "Scanner")" class="text-muted text-decoration-none small">&larr; Back to Scanner</a>
+            <span class="text-muted">/</span>
+            <span class="text-white small">Local Endpoint Audit</span>
+        </div>
+        <h3 class="fw-bold mb-0 text-white"><i class="fa-solid fa-laptop-medical text-primary me-2"></i>Local PC Smart Security Audit</h3>
+    </div>
+    <div class="d-flex gap-2">
+        <a href="@Url.Action("SmartScan", "Scanner")" class="btn btn-vg-primary">
+            <i class="fa-solid fa-arrows-rotate me-1"></i> Re-Run Smart Scan
+        </a>
+    </div>
+</div>
+
+<!-- Top Score & Device Overview Banner -->
+<div class="row g-4 mb-4">
+    <!-- Health Score Card -->
+    <div class="col-lg-4">
+        <div class="vg-card h-100 text-center d-flex flex-column justify-content-between p-4" style="background: linear-gradient(180deg, #131b2e 0%, #0d1424 100%);">
+            <div>
+                <div class="kpi-title mb-2"><i class="fa-solid fa-shield-halved text-info me-1"></i> Local Endpoint Health</div>
+                <div class="display-3 fw-bold my-2 text-@(Model.OverallHealthScore >= 85 ? "success" : Model.OverallHealthScore >= 60 ? "warning" : "danger")">
+                    @Model.OverallHealthScore<span class="fs-4 text-muted">/100</span>
+                </div>
+                <span class="badge @(Model.OverallHealthScore >= 85 ? "bg-success" : Model.OverallHealthScore >= 60 ? "bg-warning text-dark" : "bg-danger") px-3 py-2 fs-6">
+                    @Model.OverallStatus
+                </span>
+            </div>
+            <div class="border-top border-secondary-subtle pt-3 mt-3 text-muted small">
+                Last Assessed: <strong class="text-white">@Model.ScannedAt.ToString("HH:mm:ss UTC")</strong>
+            </div>
+        </div>
+    </div>
+
+    <!-- Machine Specs & Host Environment -->
+    <div class="col-lg-8">
+        <div class="vg-card h-100">
+            <div class="vg-card-header">
+                <h6 class="vg-card-title"><i class="fa-solid fa-desktop text-primary"></i> Target System Profile</h6>
+                <span class="badge bg-secondary-subtle text-light">Current Machine</span>
+            </div>
+            <div class="row g-3">
+                <div class="col-md-6">
+                    <div class="text-muted small">Machine / Hostname</div>
+                    <div class="fw-bold text-white mono">@Model.MachineName</div>
+                </div>
+                <div class="col-md-6">
+                    <div class="text-muted small">Logged-in User Account</div>
+                    <div class="fw-bold text-white mono">@Model.UserName</div>
+                </div>
+                <div class="col-md-6">
+                    <div class="text-muted small">Operating System</div>
+                    <div class="text-light small">@Model.OsDescription</div>
+                </div>
+                <div class="col-md-6">
+                    <div class="text-muted small">Hardware Architecture & Cores</div>
+                    <div class="text-light small">@Model.Architecture (@Model.ProcessorCount Logical Cores)</div>
+                </div>
+                <div class="col-md-6">
+                    <div class="text-muted small">System Uptime</div>
+                    <div class="text-light small">@Model.SystemUptimeHours hours</div>
+                </div>
+                <div class="col-md-6">
+                    <div class="text-muted small">Monitored Software Packages</div>
+                    <div class="text-light small">@Model.InstalledSoftware.Count programs audited</div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Remediation & Action Recommendations (if any) -->
+@if (Model.SecurityAlerts.Any() || Model.RemediationRecommendations.Any())
+{
+    <div class="vg-card mb-4 border-warning-subtle" style="border-left: 4px solid #f59e0b;">
+        <div class="vg-card-header">
+            <h6 class="vg-card-title text-warning"><i class="fa-solid fa-triangle-exclamation text-warning"></i> Actionable Security Recommendations</h6>
+        </div>
+        <ul class="list-unstyled mb-0">
+            @foreach (var alert in Model.SecurityAlerts)
+            {
+                <li class="text-danger small mb-2"><i class="fa-solid fa-circle-xmark me-2"></i> @alert</li>
+            }
+            @foreach (var rec in Model.RemediationRecommendations)
+            {
+                <li class="text-light small mb-1"><i class="fa-solid fa-check text-success me-2"></i> @rec</li>
+            }
+        </ul>
+    </div>
+}
+
+<!-- Security Controls Checklist -->
+<div class="vg-card mb-4">
+    <div class="vg-card-header">
+        <h6 class="vg-card-title"><i class="fa-solid fa-list-check text-success"></i> Windows Security Controls & Defense Matrix</h6>
+    </div>
+    <div class="table-responsive">
+        <table class="vg-table">
+            <thead>
+                <tr>
+                    <th>Category</th>
+                    <th>Security Check</th>
+                    <th>Status</th>
+                    <th>Audit Findings</th>
+                    <th>Recommendation</th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var check in Model.SecurityChecks)
+                {
+                    <tr>
+                        <td>
+                            <span class="badge bg-dark border border-secondary text-secondary">@check.Category</span>
+                        </td>
+                        <td class="fw-bold text-white small">
+                            @check.Name
+                        </td>
+                        <td>
+                            @if (check.Status == "Pass")
+                            {
+                                <span class="badge bg-success text-white"><i class="fa-solid fa-check me-1"></i> PASS</span>
+                            }
+                            else if (check.Status == "Warning")
+                            {
+                                <span class="badge bg-warning text-dark"><i class="fa-solid fa-triangle-exclamation me-1"></i> WARNING</span>
+                            }
+                            else
+                            {
+                                <span class="badge bg-danger text-white"><i class="fa-solid fa-xmark me-1"></i> FAIL</span>
+                            }
+                        </td>
+                        <td class="small text-light" style="max-width: 320px;">
+                            @check.Details
+                        </td>
+                        <td class="small text-secondary" style="max-width: 250px;">
+                            @check.Recommendation
+                        </td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<!-- Local Listening Ports & Bound Process Inspector -->
+<div class="vg-card mb-4">
+    <div class="vg-card-header">
+        <h6 class="vg-card-title"><i class="fa-solid fa-plug text-primary"></i> Local Listening Network Sockets & Processes (@Model.ListeningPorts.Count)</h6>
+        <span class="text-muted small">Processes currently accepting incoming TCP connections</span>
+    </div>
+    <div class="table-responsive">
+        <table class="vg-table">
+            <thead>
+                <tr>
+                    <th>Port</th>
+                    <th>Bound Address</th>
+                    <th>Process Name</th>
+                    <th>PID</th>
+                    <th>Exposure Level</th>
+                    <th>Risk Assessment</th>
+                </tr>
+            </thead>
+            <tbody>
+                @if (!Model.ListeningPorts.Any())
+                {
+                    <tr>
+                        <td colspan="6" class="text-center py-4 text-muted">No open listening TCP ports detected.</td>
+                    </tr>
+                }
+                @foreach (var p in Model.ListeningPorts)
+                {
+                    <tr>
+                        <td>
+                            <span class="mono fw-bold text-white">@p.Port / @p.Protocol</span>
+                        </td>
+                        <td>
+                            <span class="mono text-muted small">@p.LocalAddress</span>
+                        </td>
+                        <td>
+                            <span class="fw-semibold text-white small"><i class="fa-solid fa-gear text-info me-1"></i> @p.ProcessName</span>
+                        </td>
+                        <td>
+                            <span class="mono text-muted small">@(p.ProcessId > 0 ? p.ProcessId.ToString() : "N/A")</span>
+                        </td>
+                        <td>
+                            @if (p.IsExposedToNetwork)
+                            {
+                                <span class="badge bg-warning text-dark"><i class="fa-solid fa-globe me-1"></i> All Interfaces (0.0.0.0)</span>
+                            }
+                            else
+                            {
+                                <span class="badge bg-secondary-subtle text-secondary">Localhost Only (127.0.0.1)</span>
+                            }
+                        </td>
+                        <td>
+                            @if (p.RiskLevel == "High")
+                            {
+                                <span class="badge-severity-critical">High Risk Service</span>
+                            }
+                            else if (p.RiskLevel == "Medium")
+                            {
+                                <span class="badge-severity-medium">Medium</span>
+                            }
+                            else
+                            {
+                                <span class="badge-severity-low">Standard / Safe</span>
+                            }
+                        </td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<!-- Audited Installed Software Catalog -->
+<div class="vg-card">
+    <div class="vg-card-header">
+        <h6 class="vg-card-title"><i class="fa-solid fa-box-archive text-info"></i> Installed Software Catalog (@Model.InstalledSoftware.Count Audited)</h6>
+    </div>
+    <div class="table-responsive" style="max-height: 400px; overflow-y: auto;">
+        <table class="vg-table">
+            <thead>
+                <tr>
+                    <th>Application Name</th>
+                    <th>Version</th>
+                    <th>Publisher</th>
+                    <th>Vulnerability Status</th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var app in Model.InstalledSoftware)
+                {
+                    <tr>
+                        <td class="fw-semibold text-white small">@app.DisplayName</td>
+                        <td><span class="mono text-muted small">@app.DisplayVersion</span></td>
+                        <td><span class="text-secondary small">@app.Publisher</span></td>
+                        <td>
+                            @if (app.HasKnownVulnerability)
+                            {
+                                <span class="badge-severity-critical"><i class="fa-solid fa-triangle-exclamation me-1"></i> @app.VulnerabilityWarning</span>
+                            }
+                            else
+                            {
+                                <span class="badge bg-success-subtle text-success">Verified Baseline</span>
+                            }
+                        </td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+</div>

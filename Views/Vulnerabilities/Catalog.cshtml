@@ -1,0 +1,127 @@
+@model List<vulnerability_management.Models.Vulnerability>
+@{
+    ViewData["Title"] = "Master CVE Catalog";
+}
+
+<div class="top-navbar">
+    <div>
+        <h3 class="fw-bold mb-1 text-white"><i class="fa-solid fa-book-skull text-primary me-2"></i>Master CVE Vulnerability Database</h3>
+        <p class="text-muted small mb-0">Authoritative vulnerability catalog with CVSS v3.1 scoring, EPSS exploit likelihood, and CISA KEV real-world flags.</p>
+    </div>
+</div>
+
+<!-- Search & Filter Card -->
+<div class="vg-card mb-4">
+    <form method="get" class="row g-2 align-items-center">
+        <div class="col-md-5">
+            <div class="input-group">
+                <span class="input-group-text bg-dark border-secondary text-secondary"><i class="fa-solid fa-magnifying-glass"></i></span>
+                <input type="text" name="search" class="form-control form-control-vg" placeholder="Search by CVE ID, title, or affected component..." value="@ViewBag.Search" />
+            </div>
+        </div>
+        <div class="col-md-3">
+            <select name="severity" class="form-select form-select-vg">
+                <option value="">All Severities</option>
+                <option value="Critical" selected="@(ViewBag.Severity?.ToString() == "Critical")">Critical</option>
+                <option value="High" selected="@(ViewBag.Severity?.ToString() == "High")">High</option>
+                <option value="Medium" selected="@(ViewBag.Severity?.ToString() == "Medium")">Medium</option>
+                <option value="Low" selected="@(ViewBag.Severity?.ToString() == "Low")">Low</option>
+            </select>
+        </div>
+        <div class="col-md-2">
+            <div class="form-check form-switch pt-2">
+                <input class="form-check-input" type="checkbox" name="cisaKevOnly" value="true" id="cisaSwitch" @(ViewBag.CisaKevOnly == true ? "checked" : "")>
+                <label class="form-check-label text-warning small fw-bold" for="cisaSwitch">CISA KEV Only</label>
+            </div>
+        </div>
+        <div class="col-md-2 d-flex gap-2">
+            <button type="submit" class="btn btn-vg-primary w-100">Filter</button>
+            <a href="@Url.Action("Catalog", "Vulnerabilities")" class="btn btn-vg-secondary"><i class="fa-solid fa-rotate-left"></i></a>
+        </div>
+    </form>
+</div>
+
+<!-- CVE Catalog Table -->
+<div class="vg-card">
+    <div class="table-responsive">
+        <table class="vg-table">
+            <thead>
+                <tr>
+                    <th>CVE Identifier</th>
+                    <th>Vulnerability Title</th>
+                    <th>Affected Component</th>
+                    <th>Severity</th>
+                    <th>CVSS v3.1</th>
+                    <th>EPSS Score</th>
+                    <th>Active Fleet Instances</th>
+                    <th>Advisory</th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var cve in Model)
+                {
+                    var activeCount = cve.Findings?.Count(f => f.Status != FindingStatus.Remediated) ?? 0;
+                    <tr>
+                        <td>
+                            <div class="fw-bold text-white">@cve.CveId</div>
+                            @if (cve.IsInCisaKev)
+                            {
+                                <span class="badge-kev">CISA KEV</span>
+                            }
+                        </td>
+                        <td style="max-width: 320px;">
+                            <div class="text-white small fw-medium">@cve.Title</div>
+                            <div class="text-muted small text-truncate" style="max-width: 320px;">@cve.Description</div>
+                        </td>
+                        <td>
+                            <span class="small text-secondary">@cve.AffectedComponent</span>
+                        </td>
+                        <td>
+                            @if (cve.Severity == SeverityLevel.Critical)
+                            {
+                                <span class="badge-severity-critical">Critical</span>
+                            }
+                            else if (cve.Severity == SeverityLevel.High)
+                            {
+                                <span class="badge-severity-high">High</span>
+                            }
+                            else if (cve.Severity == SeverityLevel.Medium)
+                            {
+                                <span class="badge-severity-medium">Medium</span>
+                            }
+                            else
+                            {
+                                <span class="badge-severity-low">Low</span>
+                            }
+                        </td>
+                        <td>
+                            <span class="mono fw-bold text-white">@cve.CvssScore</span>
+                        </td>
+                        <td>
+                            <span class="small fw-semibold text-@(cve.EpssScore > 0.5 ? "danger" : "secondary")">
+                                @((cve.EpssScore * 100).ToString("0.0"))%
+                            </span>
+                        </td>
+                        <td>
+                            @if (activeCount > 0)
+                            {
+                                <a href="@Url.Action("Index", "Vulnerabilities", new { search = cve.CveId })" class="badge bg-danger text-white text-decoration-none">
+                                    @activeCount Active in Fleet
+                                </a>
+                            }
+                            else
+                            {
+                                <span class="badge bg-secondary-subtle text-secondary">0 Assets</span>
+                            }
+                        </td>
+                        <td>
+                            <a href="@cve.ReferenceUrl" target="_blank" class="btn btn-vg-secondary btn-sm py-1 px-2 text-primary" title="Open NVD Advisory">
+                                <i class="fa-solid fa-arrow-up-right-from-square"></i>
+                            </a>
+                        </td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+</div>

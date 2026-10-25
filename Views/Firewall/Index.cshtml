@@ -1,0 +1,166 @@
+@model vulnerability_management.Models.FirewallStatusResult
+@{
+    ViewData["Title"] = "Windows Firewall & Perimeter Defense";
+}
+
+<div class="top-navbar">
+    <div>
+        <div class="d-flex align-items-center gap-2 mb-1">
+            <a href="@Url.Action("Index", "Dashboard")" class="text-muted text-decoration-none small">&larr; Back to Dashboard</a>
+            <span class="text-muted">/</span>
+            <span class="text-white small">Boundary Defense</span>
+        </div>
+        <h3 class="fw-bold mb-0 text-white"><i class="fa-solid fa-shield-halved text-primary me-2"></i>Windows Firewall & Perimeter Defense</h3>
+    </div>
+    <div class="d-flex gap-2">
+        <a href="@Url.Action("Index", "Firewall")" class="btn btn-vg-primary">
+            <i class="fa-solid fa-arrows-rotate me-1"></i> Refresh Firewall Status
+        </a>
+    </div>
+</div>
+
+<!-- Top Score & Status Overview Banner -->
+<div class="row g-4 mb-4">
+    <!-- Security Score Card -->
+    <div class="col-lg-4">
+        <div class="vg-card h-100 text-center d-flex flex-column justify-content-between p-4" style="background: linear-gradient(180deg, #131b2e 0%, #0d1424 100%);">
+            <div>
+                <div class="kpi-title mb-2"><i class="fa-solid fa-shield text-info me-1"></i> Firewall Security Posture</div>
+                <div class="display-3 fw-bold my-2 text-@(Model.SecurityScore >= 85 ? "success" : Model.SecurityScore >= 60 ? "warning" : "danger")">
+                    @Model.SecurityScore<span class="fs-4 text-muted">/100</span>
+                </div>
+                <span class="badge @(Model.IsFirewallFullyActive ? "bg-success" : "bg-danger") px-3 py-2 fs-6">
+                    <i class="fa-solid @(Model.IsFirewallFullyActive ? "fa-circle-check" : "fa-triangle-exclamation") me-1"></i> @Model.OverallStatus
+                </span>
+            </div>
+            <div class="border-top border-secondary-subtle pt-3 mt-3 text-muted small">
+                Last Evaluated: <strong class="text-white">@Model.CheckedAt.ToString("HH:mm:ss UTC")</strong>
+            </div>
+        </div>
+    </div>
+
+    <!-- Recommendations & Warnings -->
+    <div class="col-lg-8">
+        <div class="vg-card h-100">
+            <div class="vg-card-header">
+                <h6 class="vg-card-title"><i class="fa-solid fa-shield-virus text-warning"></i> Firewall Boundary Guidance & Best Practices</h6>
+                <span class="badge bg-secondary-subtle text-light">Active Enforcement</span>
+            </div>
+            @if (Model.Warnings.Any())
+            {
+                <div class="p-3 bg-dark rounded border border-warning-subtle mb-3">
+                    <div class="text-warning fw-bold small mb-1"><i class="fa-solid fa-triangle-exclamation me-1"></i> Detected Exposure Warnings:</div>
+                    <ul class="mb-0 ps-3 text-warning-emphasis small">
+                        @foreach (var w in Model.Warnings)
+                        {
+                            <li>@w</li>
+                        }
+                    </ul>
+                </div>
+            }
+            <div>
+                <div class="text-white small fw-bold mb-1"><i class="fa-solid fa-check-circle text-success me-1"></i> Recommended Hardening Actions:</div>
+                <ul class="mb-0 ps-3 text-secondary small">
+                    @foreach (var r in Model.Recommendations)
+                    {
+                        <li>@r</li>
+                    }
+                </ul>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Firewall Profiles (Domain, Private, Public) -->
+<div class="row g-3 mb-4">
+    @foreach (var profile in Model.Profiles)
+    {
+        <div class="col-md-4">
+            <div class="vg-card h-100 border-@(profile.IsEnabled ? "secondary-subtle" : "danger")">
+                <div class="d-flex align-items-center justify-content-between mb-3 pb-2 border-bottom border-secondary-subtle">
+                    <div class="fw-bold text-white">
+                        <i class="fa-solid @(profile.ProfileName.Contains("Domain") ? "fa-building" : profile.ProfileName.Contains("Private") ? "fa-house-lock" : "fa-globe") text-primary me-2"></i>
+                        @profile.ProfileName
+                    </div>
+                    <span class="badge @(profile.IsEnabled ? "bg-success" : "bg-danger")">
+                        @(profile.IsEnabled ? "ENABLED (ON)" : "DISABLED (OFF)")
+                    </span>
+                </div>
+
+                <div class="d-flex flex-column gap-2 small">
+                    <div class="d-flex justify-content-between">
+                        <span class="text-muted">Default Inbound Action:</span>
+                        <span class="fw-bold text-@(profile.InboundAction.Equals("Block", StringComparison.OrdinalIgnoreCase) ? "success" : "danger")">
+                            @profile.InboundAction
+                        </span>
+                    </div>
+                    <div class="d-flex justify-content-between">
+                        <span class="text-muted">Default Outbound Action:</span>
+                        <span class="text-light">@profile.OutboundAction</span>
+                    </div>
+                    <div class="d-flex justify-content-between">
+                        <span class="text-muted">Connection Logging:</span>
+                        <span class="text-@(profile.LoggingEnabled ? "success" : "secondary")">@(profile.LoggingEnabled ? "Active" : "Standard")</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    }
+</div>
+
+<!-- Active Inbound Rules Table -->
+<div class="vg-card">
+    <div class="vg-card-header">
+        <h6 class="vg-card-title"><i class="fa-solid fa-list-check text-info"></i> Inbound Firewall Rules & Service Port Exposure (@Model.ActiveInboundRules.Count)</h6>
+        <span class="text-muted small">Evaluated rules permitting incoming network connections</span>
+    </div>
+    <div class="table-responsive" style="max-height: 480px; overflow-y: auto;">
+        <table class="vg-table">
+            <thead>
+                <tr>
+                    <th>Rule / Service Name</th>
+                    <th>Direction & Action</th>
+                    <th>Network Profiles</th>
+                    <th>Risk Assessment</th>
+                </tr>
+            </thead>
+            <tbody>
+                @if (!Model.ActiveInboundRules.Any())
+                {
+                    <tr>
+                        <td colspan="4" class="text-center py-4 text-muted">No explicit allow inbound rules returned.</td>
+                    </tr>
+                }
+                @foreach (var rule in Model.ActiveInboundRules)
+                {
+                    <tr>
+                        <td>
+                            <div class="fw-bold text-white small">@rule.RuleName</div>
+                        </td>
+                        <td>
+                            <span class="badge bg-secondary-subtle text-light small me-1">@rule.Direction</span>
+                            <span class="badge bg-success-subtle text-success small">@rule.Action</span>
+                        </td>
+                        <td>
+                            <span class="small text-secondary font-monospace">@rule.Profiles</span>
+                        </td>
+                        <td>
+                            @if (rule.RiskLevel == "High")
+                            {
+                                <span class="badge-severity-critical"><i class="fa-solid fa-triangle-exclamation me-1"></i> High Exposure Service</span>
+                            }
+                            else if (rule.RiskLevel == "Medium")
+                            {
+                                <span class="badge-severity-medium">Medium</span>
+                            }
+                            else
+                            {
+                                <span class="badge-severity-low">Standard / Safe</span>
+                            }
+                        </td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+</div>

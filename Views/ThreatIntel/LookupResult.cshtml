@@ -1,0 +1,105 @@
+@model vulnerability_management.Models.Vulnerability
+@{
+    ViewData["Title"] = "CVE Threat Intelligence Lookup";
+}
+
+<div class="top-navbar">
+    <div>
+        <div class="d-flex align-items-center gap-2 mb-1">
+            <a href="@Url.Action("Index", "ThreatIntel")" class="text-muted text-decoration-none small">&larr; Back to Threat Feed</a>
+            <span class="text-muted">/</span>
+            <span class="text-white small">Threat Lookup</span>
+        </div>
+        <h3 class="fw-bold mb-0 text-white"><i class="fa-solid fa-magnifying-glass text-warning me-2"></i>Threat Intelligence Lookup</h3>
+    </div>
+</div>
+
+@if (ViewBag.Error != null)
+{
+    <div class="alert alert-warning border-warning-subtle text-warning-emphasis">
+        <i class="fa-solid fa-circle-exclamation me-2"></i> @ViewBag.Error
+    </div>
+}
+else if (Model != null)
+{
+    <div class="row g-4">
+        <div class="col-lg-8">
+            <div class="vg-card mb-4">
+                <div class="vg-card-header">
+                    <h5 class="text-white mb-0 mono">@Model.CveId</h5>
+                    @if (Model.IsInCisaKev)
+                    {
+                        <span class="badge-kev">CISA KEV EXPLOITED</span>
+                    }
+                </div>
+                <h5 class="text-white">@Model.Title</h5>
+                <p class="text-light">@Model.Description</p>
+
+                <div class="border-top border-secondary-subtle pt-3 mt-3">
+                    <div class="text-muted small">Remediation Recommendation:</div>
+                    <div class="text-success fw-semibold">@Model.RemediationGuidance</div>
+                </div>
+            </div>
+
+            <!-- Fleet Presence Table -->
+            <div class="vg-card">
+                <div class="vg-card-header">
+                    <h6 class="vg-card-title"><i class="fa-solid fa-server text-primary"></i> Assets Affected by @Model.CveId</h6>
+                </div>
+                <div class="table-responsive">
+                    <table class="vg-table">
+                        <thead>
+                            <tr>
+                                <th>Hostname</th>
+                                <th>IP Address</th>
+                                <th>Status</th>
+                                <th>Action</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @if (Model.Findings == null || !Model.Findings.Any())
+                            {
+                                <tr>
+                                    <td colspan="4" class="text-center py-4 text-muted">
+                                        <i class="fa-solid fa-circle-check text-success fs-3 mb-2 d-block"></i>
+                                        Zero assets in your fleet are affected by this vulnerability.
+                                    </td>
+                                </tr>
+                            }
+                            else
+                            {
+                                @foreach (var f in Model.Findings)
+                                {
+                                    <tr>
+                                        <td class="text-white fw-bold">@f.Asset?.Hostname</td>
+                                        <td class="mono text-muted">@f.Asset?.IpAddress</td>
+                                        <td><span class="badge-status-@f.Status.ToString().ToLower()">@f.Status</span></td>
+                                        <td>
+                                            <a href="@Url.Action("Details", "Vulnerabilities", new { id = f.Id })" class="btn btn-vg-secondary btn-sm py-1 px-2">
+                                                <i class="fa-solid fa-arrow-right"></i>
+                                            </a>
+                                        </td>
+                                    </tr>
+                                }
+                            }
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-lg-4">
+            <div class="vg-card text-center mb-4">
+                <div class="vg-card-header">
+                    <h6 class="vg-card-title"><i class="fa-solid fa-gauge text-danger"></i> CVSS 3.1 Severity</h6>
+                </div>
+                <div class="display-3 fw-bold text-danger my-2">@Model.CvssScore</div>
+                <div class="mono text-muted small px-2">@Model.CvssVector</div>
+                <div class="border-top border-secondary-subtle pt-3 mt-3">
+                    <div class="text-muted small">EPSS Score</div>
+                    <div class="fw-bold text-danger fs-5">@((Model.EpssScore * 100).ToString("0.0"))%</div>
+                </div>
+            </div>
+        </div>
+    </div>
+}

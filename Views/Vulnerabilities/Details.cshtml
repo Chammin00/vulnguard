@@ -1,0 +1,285 @@
+@model vulnerability_management.Models.VulnerabilityFinding
+@{
+    ViewData["Title"] = $"Finding: {Model.Vulnerability?.CveId}";
+}
+
+<div class="top-navbar">
+    <div>
+        <div class="d-flex align-items-center gap-2 mb-1">
+            <a href="@Url.Action("Index", "Vulnerabilities")" class="text-muted text-decoration-none small">&larr; Back to Findings</a>
+            <span class="text-muted">/</span>
+            <span class="text-white small">@Model.Vulnerability?.CveId</span>
+        </div>
+        <div class="d-flex align-items-center gap-3">
+            <h3 class="fw-bold mb-0 text-white"><i class="fa-solid fa-bug text-primary me-2"></i>@Model.Vulnerability?.CveId: @Model.Vulnerability?.Title</h3>
+            @if (Model.Vulnerability?.IsInCisaKev == true)
+            {
+                <span class="badge-kev">CISA KEV EXPLOITED</span>
+            }
+        </div>
+    </div>
+    <div>
+        <button class="btn btn-vg-primary" data-bs-toggle="modal" data-bs-target="#updateStatusModal">
+            <i class="fa-solid fa-arrows-rotate me-1"></i> Update Status & Assignee
+        </button>
+    </div>
+</div>
+
+<!-- Main Finding Overview & Scoring Cards -->
+<div class="row g-4 mb-4">
+    <!-- Left: Flaw Description & Details -->
+    <div class="col-lg-8">
+        <!-- Summary Card -->
+        <div class="vg-card mb-4">
+            <div class="vg-card-header">
+                <h6 class="vg-card-title"><i class="fa-solid fa-file-lines text-info"></i> Vulnerability Overview</h6>
+                <span class="badge-status-@Model.Status.ToString().ToLower()">@Model.Status</span>
+            </div>
+            <p class="text-light lead fs-6">
+                @Model.Vulnerability?.Description
+            </p>
+            <div class="row g-3 mt-2 border-top border-secondary-subtle pt-3">
+                <div class="col-md-6">
+                    <div class="text-muted small">Affected Component / Package</div>
+                    <div class="text-white fw-semibold">@Model.Vulnerability?.AffectedComponent</div>
+                </div>
+                <div class="col-md-6">
+                    <div class="text-muted small">Official Advisory / Reference</div>
+                    <div>
+                        <a href="@Model.Vulnerability?.ReferenceUrl" target="_blank" class="text-primary text-decoration-none small">
+                            @Model.Vulnerability?.ReferenceUrl <i class="fa-solid fa-arrow-up-right-from-square ms-1" style="font-size: 0.7rem;"></i>
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Scanner Evidence / Proof of Concept -->
+        <div class="vg-card mb-4">
+            <div class="vg-card-header">
+                <h6 class="vg-card-title"><i class="fa-solid fa-terminal text-warning"></i> Scanner Evidence & Proof of Concept</h6>
+                <span class="mono text-muted small">Port: @(Model.AffectedPort ?? "N/A")</span>
+            </div>
+            <div class="terminal-box" style="height: auto; min-height: 100px;">
+                @(string.IsNullOrWhiteSpace(Model.ProofOfConcept) ? "No scanner payload logs attached." : Model.ProofOfConcept)
+            </div>
+        </div>
+
+        <!-- Remediation Guidance -->
+        <div class="vg-card mb-4">
+            <div class="vg-card-header">
+                <h6 class="vg-card-title"><i class="fa-solid fa-wrench text-success"></i> Remediation & Patching Instructions</h6>
+            </div>
+            <div class="p-3 bg-dark rounded border border-success-subtle">
+                <div class="text-success fw-semibold mb-1"><i class="fa-solid fa-shield-halved me-1"></i> Recommended Solution:</div>
+                <p class="text-light mb-0">@Model.Vulnerability?.RemediationGuidance</p>
+            </div>
+            @if (!string.IsNullOrWhiteSpace(Model.RemediationNotes))
+            {
+                <div class="mt-3">
+                    <div class="text-muted small mb-1">Engineer Remediation Notes:</div>
+                    <div class="text-secondary small bg-body p-2 rounded border border-secondary">
+                        @Model.RemediationNotes
+                    </div>
+                </div>
+            }
+            @if (!string.IsNullOrWhiteSpace(Model.RiskAcceptanceReason))
+            {
+                <div class="mt-3">
+                    <div class="text-warning small mb-1"><i class="fa-solid fa-shield-virus me-1"></i> Approved Risk Acceptance Reason:</div>
+                    <div class="text-warning-emphasis small bg-dark p-2 rounded border border-warning-subtle">
+                        @Model.RiskAcceptanceReason
+                    </div>
+                </div>
+            }
+        </div>
+
+        <!-- Activity Audit Trail Timeline -->
+        <div class="vg-card">
+            <div class="vg-card-header">
+                <h6 class="vg-card-title"><i class="fa-solid fa-clock-rotate-left text-secondary"></i> Finding Activity & Audit History</h6>
+            </div>
+            <div class="timeline">
+                @if (!Model.ActivityLogs.Any())
+                {
+                    <div class="text-muted small py-2">No activity records recorded yet.</div>
+                }
+                @foreach (var log in Model.ActivityLogs.OrderByDescending(l => l.Timestamp))
+                {
+                    <div class="border-start border-primary ps-3 pb-3 position-relative">
+                        <div class="d-flex align-items-center justify-content-between">
+                            <span class="fw-semibold text-white small">@log.Action</span>
+                            <span class="text-muted mono" style="font-size: 0.75rem;">@log.Timestamp.ToString("yyyy-MM-dd HH:mm UTC")</span>
+                        </div>
+                        <div class="text-secondary small mt-1">@log.Details</div>
+                        <div class="text-muted" style="font-size: 0.7rem;">By: @log.User</div>
+                    </div>
+                }
+            </div>
+        </div>
+    </div>
+
+    <!-- Right: Risk Metrics & Host Association -->
+    <div class="col-lg-4">
+        <!-- CVSS & Severity Card -->
+        <div class="vg-card mb-4 text-center">
+            <div class="vg-card-header">
+                <h6 class="vg-card-title"><i class="fa-solid fa-gauge-high text-danger"></i> Threat Severity Metrics</h6>
+            </div>
+            <div class="py-2">
+                <div class="display-3 fw-bold text-@(Model.Vulnerability?.Severity == SeverityLevel.Critical ? "danger" : Model.Vulnerability?.Severity == SeverityLevel.High ? "warning" : "info")">
+                    @Model.Vulnerability?.CvssScore
+                </div>
+                <div class="fw-semibold text-white">CVSS v3.1 Base Score</div>
+                <div class="mono text-muted small mt-2 px-2 text-break" style="font-size: 0.72rem;">
+                    @Model.Vulnerability?.CvssVector
+                </div>
+            </div>
+            <div class="border-top border-secondary-subtle pt-3 mt-3 d-flex justify-content-around">
+                <div>
+                    <div class="text-muted small">EPSS Probability</div>
+                    <div class="fw-bold text-@(Model.Vulnerability?.EpssScore > 0.5 ? "danger" : "secondary")">
+                        @((Model.Vulnerability?.EpssScore * 100)?.ToString("0.0"))%
+                    </div>
+                </div>
+                <div>
+                    <div class="text-muted small">CISA KEV</div>
+                    <div class="fw-bold text-@(Model.Vulnerability?.IsInCisaKev == true ? "danger" : "secondary")">
+                        @(Model.Vulnerability?.IsInCisaKev == true ? "ACTIVE" : "No")
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- SLA Status & Assigned Owner Card -->
+        <div class="vg-card mb-4">
+            <div class="vg-card-header">
+                <h6 class="vg-card-title"><i class="fa-solid fa-stopwatch text-warning"></i> Remediation SLA Telemetry</h6>
+            </div>
+            <div class="d-flex flex-column gap-3">
+                <div>
+                    <div class="text-muted small">Current Status</div>
+                    <div>
+                        <span class="badge-status-@Model.Status.ToString().ToLower() fs-6">@Model.Status</span>
+                    </div>
+                </div>
+                <div>
+                    <div class="text-muted small">Assigned Remediation Owner</div>
+                    <div class="text-white fw-semibold">
+                        <i class="fa-solid fa-user-shield text-primary me-1"></i> @(string.IsNullOrEmpty(Model.AssignedTo) ? "Unassigned" : Model.AssignedTo)
+                    </div>
+                </div>
+                <div>
+                    <div class="text-muted small">Discovery Date</div>
+                    <div class="text-secondary small">@Model.DiscoveredAt.ToString("yyyy-MM-dd HH:mm UTC")</div>
+                </div>
+                <div>
+                    <div class="text-muted small">SLA Remediation Due Date</div>
+                    <div class="d-flex align-items-center gap-2">
+                        <span class="text-white fw-bold">@Model.DueDate.ToString("yyyy-MM-dd")</span>
+                        @if (Model.IsSlaBreached)
+                        {
+                            <span class="badge bg-danger">SLA BREACHED</span>
+                        }
+                        else
+                        {
+                            <span class="badge bg-success">@Model.DaysRemaining days remaining</span>
+                        }
+                    </div>
+                </div>
+                @if (Model.ResolvedAt.HasValue)
+                {
+                    <div>
+                        <div class="text-muted small">Resolved On</div>
+                        <div class="text-success fw-semibold">@Model.ResolvedAt.Value.ToString("yyyy-MM-dd HH:mm UTC")</div>
+                    </div>
+                }
+            </div>
+        </div>
+
+        <!-- Affected Target Host Card -->
+        <div class="vg-card">
+            <div class="vg-card-header">
+                <h6 class="vg-card-title"><i class="fa-solid fa-server text-primary"></i> Target Host Profile</h6>
+            </div>
+            <div class="d-flex flex-column gap-2">
+                <div>
+                    <div class="text-muted small">Hostname</div>
+                    <div class="fw-bold text-white">
+                        <a href="@Url.Action("Details", "Assets", new { id = Model.AssetId })" class="text-white text-decoration-none">
+                            @Model.Asset?.Hostname
+                        </a>
+                    </div>
+                </div>
+                <div>
+                    <div class="text-muted small">IP Address</div>
+                    <div class="mono text-white">@Model.Asset?.IpAddress</div>
+                </div>
+                <div>
+                    <div class="text-muted small">Operating System</div>
+                    <div class="text-secondary small">@Model.Asset?.OperatingSystem</div>
+                </div>
+                <div>
+                    <div class="text-muted small">Environment & Criticality</div>
+                    <div class="d-flex gap-1 mt-1">
+                        <span class="badge bg-secondary-subtle text-light">@Model.Asset?.Environment</span>
+                        <span class="badge bg-dark border border-secondary text-secondary">
+                            @Model.Asset?.Criticality.ToString().Replace("Tier1_", "Tier 1: ").Replace("Tier2_", "Tier 2: ")
+                        </span>
+                    </div>
+                </div>
+                <div class="pt-2 border-top border-secondary-subtle mt-2">
+                    <a href="@Url.Action("Details", "Assets", new { id = Model.AssetId })" class="btn btn-vg-secondary btn-sm w-100">
+                        <i class="fa-solid fa-arrow-up-right-from-square me-1"></i> Inspect Full Host Profile
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal: Update Status & Assignee -->
+<div class="modal fade" id="updateStatusModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content bg-dark border-secondary">
+            <form method="post" action="@Url.Action("UpdateStatus", "Vulnerabilities", new { id = Model.Id })">
+                @Html.AntiForgeryToken()
+                <div class="modal-header border-secondary">
+                    <h5 class="modal-title text-white">Update Finding Workflow</h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label class="form-label text-muted small">Finding Status</label>
+                        <select name="newStatus" class="form-select form-select-vg" id="statusSelect">
+                            <option value="Open" selected="@(Model.Status == FindingStatus.Open)">Open</option>
+                            <option value="InProgress" selected="@(Model.Status == FindingStatus.InProgress)">In Progress</option>
+                            <option value="Remediated" selected="@(Model.Status == FindingStatus.Remediated)">Remediated / Resolved</option>
+                            <option value="AcceptedRisk" selected="@(Model.Status == FindingStatus.AcceptedRisk)">Accepted Risk (Exception)</option>
+                            <option value="FalsePositive" selected="@(Model.Status == FindingStatus.FalsePositive)">False Positive</option>
+                        </select>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label text-muted small">Assigned Engineer / Team</label>
+                        <input type="text" name="assignee" class="form-control form-control-vg" value="@Model.AssignedTo" placeholder="e.g. Sarah Connor (AppSec)" />
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label text-muted small">Remediation / Update Notes</label>
+                        <textarea name="notes" rows="3" class="form-control form-control-vg" placeholder="Describe actions taken, pull request link, or patch verification...">@Model.RemediationNotes</textarea>
+                    </div>
+
+                    <div class="mb-3" id="riskAcceptanceGroup">
+                        <label class="form-label text-warning small">Risk Acceptance Justification (Required for Exceptions)</label>
+                        <textarea name="riskReason" rows="2" class="form-control form-control-vg" placeholder="Provide business reason and compensatory security controls...">@Model.RiskAcceptanceReason</textarea>
+                    </div>
+                </div>
+                <div class="modal-footer border-secondary">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-vg-primary">Save Changes</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>

@@ -1,0 +1,389 @@
+@model vulnerability_management.Models.DashboardViewModel
+@{
+    ViewData["Title"] = "Executive Dashboard";
+}
+
+<!-- Top Header Section -->
+<div class="top-navbar">
+    <div>
+        <h3 class="fw-bold mb-1 text-white"><i class="fa-solid fa-shield-halved text-primary me-2"></i>Security Operations & Risk Posture</h3>
+        <p class="text-muted small mb-0">Real-time vulnerability risk analytics, SLA telemetry, and threat intelligence overview.</p>
+    </div>
+    <div class="d-flex gap-2">
+        <a href="@Url.Action("Index", "Vpn")" class="btn btn-outline-success">
+            <i class="fa-solid fa-shield-halved me-1"></i> SecureVPN
+        </a>
+        <a href="@Url.Action("Index", "Cryptii")" class="btn btn-outline-info">
+            <i class="fa-solid fa-key me-1"></i> Cryptii
+        </a>
+        <a href="@Url.Action("Index", "IdsIps")" class="btn btn-outline-danger">
+            <i class="fa-solid fa-tower-broadcast me-1"></i> IDS/IPS
+        </a>
+        <a href="@Url.Action("Index", "Hardening")" class="btn btn-outline-warning">
+            <i class="fa-solid fa-lock me-1"></i> Hardening
+        </a>
+        <a href="@Url.Action("Index", "PcHealth")" class="btn btn-outline-danger">
+            <i class="fa-solid fa-heart-pulse me-1"></i> Full PC Health
+        </a>
+        <a href="@Url.Action("Index", "Firewall")" class="btn btn-outline-primary">
+            <i class="fa-solid fa-shield-halved me-1"></i> Firewall
+        </a>
+        <a href="@Url.Action("SmartScan", "Scanner")" class="btn btn-outline-info">
+            <i class="fa-solid fa-laptop-medical me-1"></i> Smart Audit
+        </a>
+        <a href="@Url.Action("New", "Scanner")" class="btn btn-vg-primary">
+            <i class="fa-solid fa-crosshairs me-1"></i> Launch Scan
+        </a>
+    </div>
+</div>
+
+<!-- Alert Banner if CISA KEV detected -->
+@if (Model.CisaKevActiveCount > 0)
+{
+    <div class="alert alert-danger d-flex align-items-center justify-content-between p-3 mb-4 rounded-3 border border-danger-subtle" style="background-color: rgba(220, 38, 38, 0.12); color: #fca5a5;">
+        <div class="d-flex align-items-center gap-3">
+            <i class="fa-solid fa-triangle-exclamation fs-3 text-danger"></i>
+            <div>
+                <strong class="text-white d-block">Urgent CISA KEV Threats Active in Fleet (@Model.CisaKevActiveCount Finding@(Model.CisaKevActiveCount > 1 ? "s" : ""))</strong>
+                <span class="small">Vulnerabilities with confirmed real-world active exploitation cataloged by CISA were identified on production assets.</span>
+            </div>
+        </div>
+        <a href="@Url.Action("Index", "Vulnerabilities", new { cisaKevOnly = true })" class="btn btn-danger btn-sm fw-semibold">
+            View Exploited Findings <i class="fa-solid fa-arrow-right ms-1"></i>
+        </a>
+    </div>
+}
+
+<!-- Top KPI Cards Grid -->
+<div class="row g-3 mb-4">
+    <!-- Risk Score KPI -->
+    <div class="col-md-3">
+        <div class="kpi-card">
+            <i class="fa-solid fa-gauge-high kpi-icon-bg text-primary"></i>
+            <div class="kpi-title">Fleet Risk Score</div>
+            <div class="d-flex align-items-baseline gap-2">
+                <span class="kpi-value text-@(Model.AverageRiskScore > 75 ? "danger" : Model.AverageRiskScore > 40 ? "warning" : "success")">
+                    @Model.AverageRiskScore
+                </span>
+                <span class="text-muted small">/ 100</span>
+            </div>
+            <div class="small mt-2 @(Model.AverageRiskScore > 70 ? "text-danger" : "text-warning")">
+                <i class="fa-solid fa-chart-line me-1"></i> CVSS & Criticality Weighted
+            </div>
+        </div>
+    </div>
+
+    <!-- Active Findings & Criticals -->
+    <div class="col-md-3">
+        <div class="kpi-card">
+            <i class="fa-solid fa-bug kpi-icon-bg text-danger"></i>
+            <div class="kpi-title">Active Findings</div>
+            <div class="d-flex align-items-baseline gap-2">
+                <span class="kpi-value">@Model.OpenFindings</span>
+                <span class="badge-severity-critical">@Model.CriticalCount Critical</span>
+            </div>
+            <div class="small text-muted mt-2">
+                <span class="badge-severity-high">@Model.HighCount High</span>
+                <span class="badge-severity-medium ms-1">@Model.MediumCount Med</span>
+            </div>
+        </div>
+    </div>
+
+    <!-- SLA Compliance Rate -->
+    <div class="col-md-3">
+        <div class="kpi-card">
+            <i class="fa-solid fa-stopwatch kpi-icon-bg text-success"></i>
+            <div class="kpi-title">SLA Compliance</div>
+            <div class="d-flex align-items-baseline gap-2">
+                <span class="kpi-value text-@(Model.SlaComplianceRate >= 85 ? "success" : "danger")">
+                    @Model.SlaComplianceRate%
+                </span>
+                @if (Model.OverdueSlaCount > 0)
+                {
+                    <span class="badge bg-danger">@Model.OverdueSlaCount Overdue</span>
+                }
+                else
+                {
+                    <span class="badge bg-success">100% On Track</span>
+                }
+            </div>
+            <div class="small text-muted mt-2">
+                <i class="fa-solid fa-clock-rotate-left me-1"></i> Policy Enforcement Active
+            </div>
+        </div>
+    </div>
+
+    <!-- Mean Time To Remediate (MTTR) -->
+    <div class="col-md-3">
+        <div class="kpi-card">
+            <i class="fa-solid fa-wrench kpi-icon-bg text-info"></i>
+            <div class="kpi-title">Mean Time to Remediate</div>
+            <div class="d-flex align-items-baseline gap-2">
+                <span class="kpi-value">@Model.MeanTimeToRemediateDays</span>
+                <span class="text-muted small">days avg</span>
+            </div>
+            <div class="small text-success mt-2">
+                <i class="fa-solid fa-check-double me-1"></i> @Model.RemediatedFindings Total Remediated
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Charts Section -->
+<div class="row g-4 mb-4">
+    <!-- Severity Breakdown Donut -->
+    <div class="col-lg-4">
+        <div class="vg-card h-100">
+            <div class="vg-card-header">
+                <h6 class="vg-card-title"><i class="fa-solid fa-chart-pie text-info"></i> Active Findings by Severity</h6>
+            </div>
+            <div class="d-flex align-items-center justify-content-center py-2" style="height: 240px;">
+                <canvas id="severityChart"></canvas>
+            </div>
+            <div class="d-flex justify-content-around text-center border-top border-secondary-subtle pt-3 mt-2">
+                <div>
+                    <div class="fw-bold text-danger">@Model.CriticalCount</div>
+                    <div class="text-muted small">Critical</div>
+                </div>
+                <div>
+                    <div class="fw-bold text-warning">@Model.HighCount</div>
+                    <div class="text-muted small">High</div>
+                </div>
+                <div>
+                    <div class="fw-bold text-info">@Model.MediumCount</div>
+                    <div class="text-muted small">Medium</div>
+                </div>
+                <div>
+                    <div class="fw-bold text-primary">@Model.LowCount</div>
+                    <div class="text-muted small">Low</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Vulnerability Trends Line Chart -->
+    <div class="col-lg-8">
+        <div class="vg-card h-100">
+            <div class="vg-card-header">
+                <h6 class="vg-card-title"><i class="fa-solid fa-chart-line text-primary"></i> Vulnerability Discovery vs Resolution Trend</h6>
+                <span class="badge bg-secondary-subtle text-light small">Last 5 Intervals</span>
+            </div>
+            <div style="height: 280px;">
+                <canvas id="trendChart"></canvas>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Lower Section: Critical Findings & Top Vulnerable Assets -->
+<div class="row g-4 mb-4">
+    <!-- Top Critical Active Findings -->
+    <div class="col-lg-7">
+        <div class="vg-card h-100">
+            <div class="vg-card-header">
+                <h6 class="vg-card-title"><i class="fa-solid fa-fire text-danger"></i> High-Priority Active Threats</h6>
+                <a href="@Url.Action("Index", "Vulnerabilities")" class="text-decoration-none small text-primary">View All (@Model.OpenFindings) &rarr;</a>
+            </div>
+            <div class="table-responsive">
+                <table class="vg-table">
+                    <thead>
+                        <tr>
+                            <th>CVE / Vulnerability</th>
+                            <th>Target Asset</th>
+                            <th>Severity</th>
+                            <th>SLA Due</th>
+                            <th>Status</th>
+                            <th>Action</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var finding in Model.CriticalAndHighFindings.Take(5))
+                        {
+                            <tr>
+                                <td>
+                                    <div class="fw-semibold text-white">
+                                        <a href="@Url.Action("Details", "Vulnerabilities", new { id = finding.Id })" class="text-decoration-none text-white">
+                                            @finding.Vulnerability?.CveId
+                                        </a>
+                                        @if (finding.Vulnerability?.IsInCisaKev == true)
+                                        {
+                                            <span class="badge-kev ms-1">KEV</span>
+                                        }
+                                    </div>
+                                    <div class="text-muted small text-truncate" style="max-width: 220px;">@finding.Vulnerability?.Title</div>
+                                </td>
+                                <td>
+                                    <div class="text-white small">@finding.Asset?.Hostname</div>
+                                    <div class="text-muted mono" style="font-size: 0.75rem;">@finding.Asset?.IpAddress</div>
+                                </td>
+                                <td>
+                                    @if (finding.Vulnerability?.Severity == SeverityLevel.Critical)
+                                    {
+                                        <span class="badge-severity-critical">CRIT @finding.Vulnerability.CvssScore</span>
+                                    }
+                                    else if (finding.Vulnerability?.Severity == SeverityLevel.High)
+                                    {
+                                        <span class="badge-severity-high">HIGH @finding.Vulnerability.CvssScore</span>
+                                    }
+                                </td>
+                                <td>
+                                    @if (finding.IsSlaBreached)
+                                    {
+                                        <span class="badge bg-danger text-white"><i class="fa-solid fa-triangle-exclamation"></i> Overdue</span>
+                                    }
+                                    else
+                                    {
+                                        <span class="text-secondary small">@finding.DaysRemaining d left</span>
+                                    }
+                                </td>
+                                <td>
+                                    <span class="badge-status-@finding.Status.ToString().ToLower()">@finding.Status</span>
+                                </td>
+                                <td>
+                                    <a href="@Url.Action("Details", "Vulnerabilities", new { id = finding.Id })" class="btn btn-vg-secondary btn-sm py-1 px-2">
+                                        <i class="fa-solid fa-arrow-right"></i>
+                                    </a>
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <!-- Top Vulnerable Assets -->
+    <div class="col-lg-5">
+        <div class="vg-card h-100">
+            <div class="vg-card-header">
+                <h6 class="vg-card-title"><i class="fa-solid fa-server text-warning"></i> Highest Risk Assets</h6>
+                <a href="@Url.Action("Index", "Assets")" class="text-decoration-none small text-primary">All Assets (@Model.TotalAssets) &rarr;</a>
+            </div>
+            <div class="table-responsive">
+                <table class="vg-table">
+                    <thead>
+                        <tr>
+                            <th>Host / IP</th>
+                            <th>Criticality</th>
+                            <th>Findings</th>
+                            <th>Action</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var asset in Model.TopVulnerableAssets)
+                        {
+                            var openCount = asset.Findings?.Count(f => f.Status == FindingStatus.Open || f.Status == FindingStatus.InProgress) ?? 0;
+                            <tr>
+                                <td>
+                                    <div class="fw-semibold text-white">@asset.Hostname</div>
+                                    <div class="text-muted mono" style="font-size: 0.75rem;">@asset.IpAddress</div>
+                                </td>
+                                <td>
+                                    <span class="badge bg-dark border border-secondary text-secondary" style="font-size: 0.7rem;">
+                                        @asset.Criticality.ToString().Replace("Tier1_", "T1: ").Replace("Tier2_", "T2: ").Replace("Tier3_", "T3: ").Replace("Tier4_", "T4: ")
+                                    </span>
+                                </td>
+                                <td>
+                                    <span class="badge @(openCount > 0 ? "bg-danger" : "bg-success")">
+                                        @openCount Active
+                                    </span>
+                                </td>
+                                <td>
+                                    <a href="@Url.Action("Details", "Assets", new { id = asset.Id })" class="btn btn-vg-secondary btn-sm py-1 px-2">
+                                        <i class="fa-solid fa-magnifying-glass"></i>
+                                    </a>
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+<script>
+    document.addEventListener('DOMContentLoaded', function () {
+        // 1. Severity Breakdown Donut Chart
+        const severityCtx = document.getElementById('severityChart').getContext('2d');
+        new Chart(severityCtx, {
+            type: 'doughnut',
+            data: {
+                labels: ['Critical', 'High', 'Medium', 'Low'],
+                datasets: [{
+                    data: [@Model.CriticalCount, @Model.HighCount, @Model.MediumCount, @Model.LowCount],
+                    backgroundColor: ['#ef4444', '#f97316', '#eab308', '#3b82f6'],
+                    borderColor: '#131b2e',
+                    borderWidth: 3,
+                    hoverOffset: 4
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: {
+                        display: false
+                    }
+                },
+                cutout: '70%'
+            }
+        });
+
+        // 2. Trend Line Chart
+        const trendCtx = document.getElementById('trendChart').getContext('2d');
+        new Chart(trendCtx, {
+            type: 'line',
+            data: {
+                labels: @Html.Raw(System.Text.Json.JsonSerializer.Serialize(Model.TrendLabels)),
+                datasets: [
+                    {
+                        label: 'Active / Discovered',
+                        data: @Html.Raw(System.Text.Json.JsonSerializer.Serialize(Model.DiscoveredTrends)),
+                        borderColor: '#ef4444',
+                        backgroundColor: 'rgba(239, 68, 68, 0.1)',
+                        fill: true,
+                        tension: 0.3,
+                        borderWidth: 2,
+                        pointRadius: 4,
+                        pointBackgroundColor: '#ef4444'
+                    },
+                    {
+                        label: 'Remediated / Closed',
+                        data: @Html.Raw(System.Text.Json.JsonSerializer.Serialize(Model.ResolvedTrends)),
+                        borderColor: '#10b981',
+                        backgroundColor: 'rgba(16, 185, 129, 0.1)',
+                        fill: true,
+                        tension: 0.3,
+                        borderWidth: 2,
+                        pointRadius: 4,
+                        pointBackgroundColor: '#10b981'
+                    }
+                ]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                scales: {
+                    y: {
+                        beginAtZero: true,
+                        grid: { color: 'rgba(255, 255, 255, 0.05)' },
+                        ticks: { color: '#64748b' }
+                    },
+                    x: {
+                        grid: { color: 'rgba(255, 255, 255, 0.05)' },
+                        ticks: { color: '#64748b' }
+                    }
+                },
+                plugins: {
+                    legend: {
+                        position: 'top',
+                        labels: { color: '#94a3b8', boxWidth: 12 }
+                    }
+                }
+            }
+        });
+    });
+</script>
+}

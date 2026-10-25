@@ -1,0 +1,314 @@
+@model vulnerability_management.Models.CryptiiTransformRequest
+@{
+    ViewData["Title"] = "Cryptii Crypto Workbench & Cipher Studio";
+    var result = ViewBag.Result as vulnerability_management.Models.CryptiiTransformResult;
+}
+
+<div class="top-navbar">
+    <div>
+        <div class="d-flex align-items-center gap-2 mb-1">
+            <a href="@Url.Action("Index", "Dashboard")" class="text-muted text-decoration-none small">&larr; Back to Dashboard</a>
+            <span class="text-muted">/</span>
+            <span class="text-white small">Cryptography & Ciphers</span>
+        </div>
+        <h3 class="fw-bold mb-0 text-white"><i class="fa-solid fa-key text-info me-2"></i>Cryptii Crypto Workbench & Cipher Studio</h3>
+    </div>
+    <div class="d-flex gap-2">
+        <button type="button" class="btn btn-outline-info" id="rsaModalBtn" data-bs-toggle="modal" data-bs-target="#rsaModal">
+            <i class="fa-solid fa-shield-halved me-1"></i> RSA Keypair Generator
+        </button>
+    </div>
+</div>
+
+<!-- Main Cryptii Modular Transformation Studio -->
+<div class="row g-4 mb-4">
+    <!-- Left: Input Pane -->
+    <div class="col-lg-5">
+        <div class="vg-card h-100 d-flex flex-column justify-content-between">
+            <div>
+                <div class="vg-card-header">
+                    <h6 class="vg-card-title text-white"><i class="fa-solid fa-file-lines text-primary"></i> Input Text / Ciphertext</h6>
+                    <div class="d-flex gap-1">
+                        <button type="button" class="btn btn-vg-secondary btn-sm py-0 px-2" id="clearInputBtn" title="Clear Input">
+                            <i class="fa-solid fa-eraser"></i>
+                        </button>
+                    </div>
+                </div>
+                <textarea id="inputText" class="form-control form-control-vg mono" rows="10" placeholder="Type or paste text, encoded string, or ciphertext here...">@Model.InputText</textarea>
+            </div>
+            <div class="d-flex justify-content-between align-items-center text-muted small pt-2 border-top border-secondary-subtle mt-2">
+                <span>Length: <strong id="inputLength" class="text-white">@(Model.InputText?.Length ?? 0)</strong> chars</span>
+                <span>Encoding: <strong class="text-info">UTF-8</strong></span>
+            </div>
+        </div>
+    </div>
+
+    <!-- Center: Transformation Selector & Pipeline Settings -->
+    <div class="col-lg-2">
+        <div class="vg-card h-100 text-center d-flex flex-column justify-content-center p-3" style="background: linear-gradient(180deg, #101626 0%, #0d121f 100%);">
+            <div class="mb-3">
+                <i class="fa-solid fa-wand-magic-sparkles fs-3 text-info mb-2"></i>
+                <div class="small fw-bold text-white mb-2">TRANSFORM</div>
+                <select id="methodSelect" class="form-select form-select-sm form-control-vg text-center fw-bold">
+                    <optgroup label="Encodings & Formats">
+                        <option value="base64_encode" selected>Base64 Encode</option>
+                        <option value="base64_decode">Base64 Decode</option>
+                        <option value="hex_encode">Hexadecimal Encode</option>
+                        <option value="hex_decode">Hexadecimal Decode</option>
+                        <option value="binary_encode">Binary (8-bit) Encode</option>
+                        <option value="binary_decode">Binary Decode</option>
+                        <option value="url_encode">URL / Percent Encode</option>
+                        <option value="url_decode">URL Decode</option>
+                        <option value="html_encode">HTML Entities Encode</option>
+                        <option value="html_decode">HTML Entities Decode</option>
+                        <option value="morse_encode">Morse Code Encode</option>
+                        <option value="morse_decode">Morse Code Decode</option>
+                    </optgroup>
+                    <optgroup label="Classical Ciphers">
+                        <option value="rot13">ROT13 Cipher</option>
+                        <option value="rot47">ROT47 Cipher</option>
+                        <option value="caesar_encode">Caesar Cipher (Shift +3)</option>
+                        <option value="caesar_decode">Caesar Cipher (Unshift -3)</option>
+                        <option value="vigenere_encode">Vigenère Encrypt</option>
+                        <option value="vigenere_decode">Vigenère Decrypt</option>
+                        <option value="atbash">Atbash Cipher (A &harr; Z)</option>
+                        <option value="xor">XOR Symmetric Cipher</option>
+                    </optgroup>
+                    <optgroup label="Modern Cryptography">
+                        <option value="aes_encrypt">AES-256-CBC Encrypt</option>
+                        <option value="aes_decrypt">AES-256-CBC Decrypt</option>
+                        <option value="hmac_sha256">HMAC-SHA256 Sign</option>
+                    </optgroup>
+                </select>
+            </div>
+
+            <!-- Dynamic Key / Shift / Secret Input -->
+            <div id="keyParamGroup" class="mb-3 d-none">
+                <label id="keyLabel" class="form-label text-muted small mb-1" style="font-size: 0.72rem;">Secret Key / Shift</label>
+                <input type="text" id="keyInput" class="form-control form-control-vg form-control-sm mono text-center" placeholder="Key / Shift..." value="3" />
+            </div>
+
+            <!-- Swap Button -->
+            <button type="button" class="btn btn-vg-secondary btn-sm w-100 my-2" id="swapBtn" title="Swap Output to Input for Chaining">
+                <i class="fa-solid fa-right-left text-warning me-1"></i> Swap & Chain
+            </button>
+        </div>
+    </div>
+
+    <!-- Right: Output Pane -->
+    <div class="col-lg-5">
+        <div class="vg-card h-100 d-flex flex-column justify-content-between">
+            <div>
+                <div class="vg-card-header">
+                    <h6 class="vg-card-title text-white"><i class="fa-solid fa-code text-success"></i> Transformed Output</h6>
+                    <button type="button" class="btn btn-vg-secondary btn-sm py-0 px-2" id="copyOutputBtn" title="Copy Output">
+                        <i class="fa-solid fa-copy me-1"></i> Copy
+                    </button>
+                </div>
+                <textarea id="outputText" class="form-control form-control-vg mono" rows="10" placeholder="Transformed output will appear here automatically..." readonly>@(result?.OutputText ?? "")</textarea>
+            </div>
+            <div class="d-flex justify-content-between align-items-center text-muted small pt-2 border-top border-secondary-subtle mt-2">
+                <span>Length: <strong id="outputLength" class="text-white">@(result?.OutputLength ?? 0)</strong> chars</span>
+                <span id="statusBadge" class="badge bg-success-subtle text-success">Active Sync</span>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Quick Preset Recipes -->
+<div class="vg-card mb-4">
+    <div class="vg-card-header">
+        <h6 class="vg-card-title text-white"><i class="fa-solid fa-flask text-warning"></i> Quick Crypto Recipes & Presets</h6>
+    </div>
+    <div class="d-flex flex-wrap gap-2">
+        <button type="button" class="btn btn-vg-secondary btn-sm recipe-btn" data-method="base64_encode" data-input="AdminSecretToken2026!">
+            <i class="fa-solid fa-lock text-primary me-1"></i> Base64 Token Encode
+        </button>
+        <button type="button" class="btn btn-vg-secondary btn-sm recipe-btn" data-method="rot13" data-input="Why did the security analyst cross the road?">
+            <i class="fa-solid fa-arrows-rotate text-info me-1"></i> ROT13 Obfuscation
+        </button>
+        <button type="button" class="btn btn-vg-secondary btn-sm recipe-btn" data-method="morse_encode" data-input="SOS DISTRESS SIGNAL">
+            <i class="fa-solid fa-radio text-danger me-1"></i> Morse Code Beacon
+        </button>
+        <button type="button" class="btn btn-vg-secondary btn-sm recipe-btn" data-method="caesar_encode" data-key="7" data-input="ATTACK AT DAWN">
+            <i class="fa-solid fa-landmark text-warning me-1"></i> Caesar Shift (+7)
+        </button>
+        <button type="button" class="btn btn-vg-secondary btn-sm recipe-btn" data-method="vigenere_encode" data-key="CRYPTO" data-input="SECRET CYBER DEFENSE DIRECTIVE">
+            <i class="fa-solid fa-key text-success me-1"></i> Vigenère Encrypt
+        </button>
+        <button type="button" class="btn btn-vg-secondary btn-sm recipe-btn" data-method="aes_encrypt" data-key="SuperSecretPassphrase99!" data-input="Confidential Employee SSN & Banking Record">
+            <i class="fa-solid fa-shield-halved text-danger me-1"></i> AES-256-CBC Encrypt
+        </button>
+    </div>
+</div>
+
+<!-- RSA Keypair Generator Modal -->
+<div class="modal fade" id="rsaModal" tabindex="-1" aria-labelledby="rsaModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content bg-dark border border-secondary text-white">
+            <div class="modal-header border-secondary">
+                <h5 class="modal-title" id="rsaModalLabel"><i class="fa-solid fa-shield-halved text-info me-2"></i>RSA Asymmetric Keypair Generator</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <div class="d-flex justify-content-between align-items-center mb-3">
+                    <span class="text-muted small">Generate cryptographically secure PKCS#8 RSA public and private keypairs in PEM format.</span>
+                    <button type="button" class="btn btn-vg-primary btn-sm" id="generateRsaBtn">
+                        <i class="fa-solid fa-bolt me-1"></i> Generate New 2048-bit RSA Keys
+                    </button>
+                </div>
+                <div class="mb-3">
+                    <label class="form-label text-info small fw-bold">Public Key (PEM)</label>
+                    <textarea id="rsaPublic" class="form-control form-control-vg mono small" rows="5" readonly placeholder="Click Generate to create RSA public key..."></textarea>
+                </div>
+                <div>
+                    <label class="form-label text-danger small fw-bold">Private Key (PKCS#8 PEM - KEEP SECRET)</label>
+                    <textarea id="rsaPrivate" class="form-control form-control-vg mono small" rows="7" readonly placeholder="Click Generate to create RSA private key..."></textarea>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+<script>
+    document.addEventListener('DOMContentLoaded', () => {
+        const inputEl = document.getElementById('inputText');
+        const outputEl = document.getElementById('outputText');
+        const methodEl = document.getElementById('methodSelect');
+        const keyGroupEl = document.getElementById('keyParamGroup');
+        const keyLabelEl = document.getElementById('keyLabel');
+        const keyInputEl = document.getElementById('keyInput');
+        const inputLengthEl = document.getElementById('inputLength');
+        const outputLengthEl = document.getElementById('outputLength');
+        const statusBadgeEl = document.getElementById('statusBadge');
+
+        // Check if current method requires a key/shift parameter
+        function updateKeyVisibility() {
+            const m = methodEl.value;
+            if (m.startsWith('caesar')) {
+                keyGroupEl.classList.remove('d-none');
+                keyLabelEl.innerText = 'Caesar Shift (e.g. 3, 7, 13)';
+                if (!keyInputEl.value || isNaN(keyInputEl.value)) keyInputEl.value = '3';
+            } else if (m.startsWith('vigenere')) {
+                keyGroupEl.classList.remove('d-none');
+                keyLabelEl.innerText = 'Vigenère Keyword (e.g. SECRET, CRYPTO)';
+                if (!keyInputEl.value || !isNaN(keyInputEl.value)) keyInputEl.value = 'CRYPTO';
+            } else if (m === 'xor') {
+                keyGroupEl.classList.remove('d-none');
+                keyLabelEl.innerText = 'XOR Repeating Key';
+                if (!keyInputEl.value) keyInputEl.value = 'SECRET';
+            } else if (m.startsWith('aes')) {
+                keyGroupEl.classList.remove('d-none');
+                keyLabelEl.innerText = 'AES-256 Passphrase';
+                if (!keyInputEl.value) keyInputEl.value = 'VulnGuardSecurePassphrase';
+            } else if (m === 'hmac_sha256') {
+                keyGroupEl.classList.remove('d-none');
+                keyLabelEl.innerText = 'HMAC Secret Key';
+                if (!keyInputEl.value) keyInputEl.value = 'SecretKey';
+            } else {
+                keyGroupEl.classList.add('d-none');
+            }
+        }
+
+        let debounceTimer;
+        function triggerTransform() {
+            clearTimeout(debounceTimer);
+            debounceTimer = setTimeout(() => {
+                const text = inputEl.value;
+                inputLengthEl.innerText = text.length;
+
+                const payload = {
+                    inputText: text,
+                    method: methodEl.value,
+                    keyOrSecret: keyInputEl.value
+                };
+
+                fetch('/api/cryptii/transform', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                })
+                .then(r => r.json())
+                .then(data => {
+                    if (data.isSuccess) {
+                        outputEl.value = data.outputText;
+                        outputLengthEl.innerText = data.outputLength;
+                        statusBadgeEl.className = 'badge bg-success-subtle text-success';
+                        statusBadgeEl.innerText = 'Active Sync';
+                    } else {
+                        outputEl.value = 'Error: ' + data.errorMessage;
+                        statusBadgeEl.className = 'badge bg-danger-subtle text-danger';
+                        statusBadgeEl.innerText = 'Transform Error';
+                    }
+                })
+                .catch(err => {
+                    statusBadgeEl.className = 'badge bg-warning-subtle text-warning';
+                    statusBadgeEl.innerText = 'Sync Error';
+                });
+            }, 100);
+        }
+
+        inputEl.addEventListener('input', triggerTransform);
+        methodEl.addEventListener('change', () => {
+            updateKeyVisibility();
+            triggerTransform();
+        });
+        keyInputEl.addEventListener('input', triggerTransform);
+
+        // Clear input
+        document.getElementById('clearInputBtn').addEventListener('click', () => {
+            inputEl.value = '';
+            triggerTransform();
+            inputEl.focus();
+        });
+
+        // Copy output
+        document.getElementById('copyOutputBtn').addEventListener('click', () => {
+            if (outputEl.value) {
+                navigator.clipboard.writeText(outputEl.value).then(() => {
+                    const btn = document.getElementById('copyOutputBtn');
+                    btn.innerHTML = '<i class="fa-solid fa-check text-success me-1"></i> Copied';
+                    setTimeout(() => { btn.innerHTML = '<i class="fa-solid fa-copy me-1"></i> Copy'; }, 1500);
+                });
+            }
+        });
+
+        // Swap and chain
+        document.getElementById('swapBtn').addEventListener('click', () => {
+            const out = outputEl.value;
+            if (out && !out.startsWith('Error:')) {
+                inputEl.value = out;
+                triggerTransform();
+            }
+        });
+
+        // Preset recipes
+        document.querySelectorAll('.recipe-btn').forEach(btn => {
+            btn.addEventListener('click', () => {
+                const m = btn.getAttribute('data-method');
+                const inp = btn.getAttribute('data-input');
+                const k = btn.getAttribute('data-key');
+                if (m) methodEl.value = m;
+                if (inp) inputEl.value = inp;
+                if (k) keyInputEl.value = k;
+                updateKeyVisibility();
+                triggerTransform();
+            });
+        });
+
+        // RSA Keypair generator
+        document.getElementById('generateRsaBtn').addEventListener('click', () => {
+            fetch('/api/cryptii/rsa-keys?keySize=2048', { method: 'POST' })
+            .then(r => r.json())
+            .then(data => {
+                document.getElementById('rsaPublic').value = data.publicKeyPem;
+                document.getElementById('rsaPrivate').value = data.privateKeyPem;
+            });
+        });
+
+        updateKeyVisibility();
+        triggerTransform();
+    });
+</script>
+}

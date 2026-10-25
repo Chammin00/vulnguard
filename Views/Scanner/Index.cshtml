@@ -1,0 +1,110 @@
+@model List<vulnerability_management.Models.ScanJob>
+@{
+    ViewData["Title"] = "Vulnerability Scanner";
+}
+
+<div class="top-navbar">
+    <div>
+        <h3 class="fw-bold mb-1 text-white"><i class="fa-solid fa-radar text-primary me-2"></i>Vulnerability Scanner Engine</h3>
+        <p class="text-muted small mb-0">Automated TCP socket prober, service fingerprinting, and signature CVE correlation jobs.</p>
+    </div>
+    <div>
+        <a href="@Url.Action("New", "Scanner")" class="btn btn-vg-primary">
+            <i class="fa-solid fa-plus-circle me-1"></i> Launch New Scan
+        </a>
+    </div>
+</div>
+
+<!-- Scan Jobs History Table -->
+<div class="vg-card">
+    <div class="vg-card-header">
+        <h6 class="vg-card-title"><i class="fa-solid fa-list-check text-info"></i> Recent Scan Executions</h6>
+    </div>
+    <div class="table-responsive">
+        <table class="vg-table">
+            <thead>
+                <tr>
+                    <th>Scan Job Name</th>
+                    <th>Target IP / Subnet</th>
+                    <th>Status</th>
+                    <th>Progress</th>
+                    <th>Assets Scanned</th>
+                    <th>Vulnerabilities Found</th>
+                    <th>Started At</th>
+                    <th>Action</th>
+                </tr>
+            </thead>
+            <tbody>
+                @if (!Model.Any())
+                {
+                    <tr>
+                        <td colspan="8" class="text-center py-5 text-muted">
+                            <i class="fa-solid fa-radar fs-2 mb-2 d-block"></i>
+                            No scan jobs have been executed yet. Click "Launch New Scan" to run your first sweep.
+                        </td>
+                    </tr>
+                }
+                @foreach (var scan in Model)
+                {
+                    <tr>
+                        <td>
+                            <div class="fw-bold text-white">
+                                <a href="@Url.Action("Live", "Scanner", new { id = scan.Id })" class="text-white text-decoration-none">
+                                    @scan.ScanName
+                                </a>
+                            </div>
+                        </td>
+                        <td>
+                            <span class="mono small text-secondary">@scan.Target</span>
+                        </td>
+                        <td>
+                            @if (scan.Status == ScanStatus.Completed)
+                            {
+                                <span class="badge bg-success-subtle text-success"><i class="fa-solid fa-check me-1"></i> Completed</span>
+                            }
+                            else if (scan.Status == ScanStatus.Running)
+                            {
+                                <span class="badge bg-primary-subtle text-primary"><i class="fa-solid fa-spinner fa-spin me-1"></i> Running</span>
+                            }
+                            else if (scan.Status == ScanStatus.Queued)
+                            {
+                                <span class="badge bg-secondary text-light">Queued</span>
+                            }
+                            else
+                            {
+                                <span class="badge bg-danger">Failed</span>
+                            }
+                        </td>
+                        <td style="width: 140px;">
+                            <div class="progress bg-dark border border-secondary-subtle" style="height: 8px;">
+                                <div class="progress-bar bg-primary" role="progressbar" style="width: @(scan.ProgressPercent)%;"></div>
+                            </div>
+                            <span class="mono" style="font-size: 0.7rem; color: #94a3b8;">@scan.ProgressPercent%</span>
+                        </td>
+                        <td>
+                            <span class="text-white small">@scan.AssetsScanned hosts</span>
+                        </td>
+                        <td>
+                            @if (scan.VulnerabilitiesFound > 0)
+                            {
+                                <span class="badge bg-danger-subtle text-danger-emphasis">@scan.VulnerabilitiesFound Flagged</span>
+                            }
+                            else
+                            {
+                                <span class="badge bg-success-subtle text-success-emphasis">0 Found</span>
+                            }
+                        </td>
+                        <td>
+                            <span class="mono text-muted small">@scan.StartedAt.ToString("yyyy-MM-dd HH:mm")</span>
+                        </td>
+                        <td>
+                            <a href="@Url.Action("Live", "Scanner", new { id = scan.Id })" class="btn btn-vg-secondary btn-sm py-1 px-2">
+                                <i class="fa-solid fa-terminal me-1"></i> Console
+                            </a>
+                        </td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+</div>

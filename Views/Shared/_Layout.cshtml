@@ -1,0 +1,556 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>@ViewData["Title"] - VulnGuard Enterprise VM</title>
+    <!-- Bootstrap 5 CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet" />
+    <!-- FontAwesome 6 Icons -->
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" rel="stylesheet" />
+    <!-- Google Fonts Inter -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+    <!-- Chart.js -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+    <script src="~/cosmic-background.js"></script>
+
+    <style>
+        :root {
+            --vg-bg-body: transparent;
+            --vg-bg-card: rgba(19, 27, 46, 0.72);
+            --vg-bg-card-hover: rgba(24, 34, 58, 0.85);
+            --vg-border: rgba(255, 255, 255, 0.12);
+            --vg-border-subtle: rgba(255, 255, 255, 0.08);
+            --vg-text-primary: #f1f5f9;
+            --vg-text-secondary: #94a3b8;
+            --vg-text-muted: #64748b;
+            --vg-primary: #3b82f6;
+            --vg-primary-hover: #2563eb;
+            --vg-critical: #ef4444;
+            --vg-high: #f97316;
+            --vg-medium: #eab308;
+            --vg-low: #3b82f6;
+            --vg-info: #06b6d4;
+            --vg-success: #10b981;
+            --sidebar-width: 250px;
+        }
+
+        body {
+            background-color: transparent;
+            color: var(--vg-text-primary);
+            font-family: 'Inter', sans-serif;
+            margin: 0;
+            padding: 0;
+            min-height: 100vh;
+        }
+
+        .mono {
+            font-family: 'JetBrains Mono', monospace;
+        }
+
+        /* Sidebar & Layout */
+        .app-wrapper {
+            display: flex;
+            min-height: 100vh;
+        }
+
+        .app-sidebar {
+            width: var(--sidebar-width);
+            background-color: rgba(13, 20, 36, 0.78);
+            backdrop-filter: blur(14px);
+            -webkit-backdrop-filter: blur(14px);
+            border-right: 1px solid var(--vg-border);
+            display: flex;
+            flex-direction: column;
+            position: fixed;
+            top: 0;
+            bottom: 0;
+            left: 0;
+            z-index: 1000;
+        }
+
+        .sidebar-brand {
+            padding: 1.25rem 1.5rem;
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            border-bottom: 1px solid var(--vg-border);
+            text-decoration: none;
+            color: #ffffff;
+        }
+
+        .sidebar-brand i {
+            font-size: 1.5rem;
+            color: #38bdf8;
+            filter: drop-shadow(0 0 8px rgba(56, 189, 248, 0.4));
+        }
+
+        .sidebar-brand span {
+            font-weight: 700;
+            font-size: 1.15rem;
+            letter-spacing: 0.5px;
+        }
+
+        .sidebar-brand .badge-tag {
+            font-size: 0.65rem;
+            background: rgba(56, 189, 248, 0.15);
+            color: #38bdf8;
+            padding: 2px 6px;
+            border-radius: 4px;
+            font-weight: 600;
+            border: 1px solid rgba(56, 189, 248, 0.3);
+        }
+
+        .sidebar-nav {
+            padding: 1rem 0.75rem;
+            flex-grow: 1;
+            overflow-y: auto;
+        }
+
+        .nav-section-title {
+            font-size: 0.65rem;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            color: var(--vg-text-muted);
+            padding: 0.5rem 0.75rem 0.25rem 0.75rem;
+            font-weight: 700;
+        }
+
+        .nav-link-custom {
+            display: flex;
+            align-items: center;
+            gap: 0.85rem;
+            padding: 0.65rem 0.85rem;
+            color: var(--vg-text-secondary);
+            border-radius: 8px;
+            text-decoration: none;
+            font-weight: 500;
+            font-size: 0.9rem;
+            transition: all 0.15s ease-in-out;
+            margin-bottom: 0.2rem;
+        }
+
+        .nav-link-custom i {
+            width: 20px;
+            text-align: center;
+            font-size: 1rem;
+            color: var(--vg-text-muted);
+            transition: color 0.15s ease-in-out;
+        }
+
+        .nav-link-custom:hover {
+            background-color: var(--vg-bg-card);
+            color: #ffffff;
+        }
+
+        .nav-link-custom:hover i {
+            color: #38bdf8;
+        }
+
+        .nav-link-custom.active {
+            background: linear-gradient(90deg, rgba(59, 130, 246, 0.2) 0%, rgba(59, 130, 246, 0.05) 100%);
+            color: #ffffff;
+            border-left: 3px solid #3b82f6;
+            font-weight: 600;
+        }
+
+        .nav-link-custom.active i {
+            color: #60a5fa;
+        }
+
+        .main-content {
+            margin-left: var(--sidebar-width);
+            flex-grow: 1;
+            padding: 1.5rem 2rem 3rem 2rem;
+            background-color: var(--vg-bg-body);
+        }
+
+        /* Top Header */
+        .top-navbar {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding-bottom: 1.5rem;
+            margin-bottom: 1.5rem;
+            border-bottom: 1px solid var(--vg-border);
+        }
+
+        /* Cards & Panels */
+        .vg-card {
+            background-color: var(--vg-bg-card);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            border: 1px solid var(--vg-border);
+            border-radius: 12px;
+            padding: 1.25rem;
+            transition: border-color 0.2s;
+        }
+
+        .vg-card:hover {
+            border-color: #2e3e6b;
+        }
+
+        .vg-card-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 1rem;
+            padding-bottom: 0.75rem;
+            border-bottom: 1px solid var(--vg-border-subtle);
+        }
+
+        .vg-card-title {
+            font-size: 1rem;
+            font-weight: 600;
+            color: var(--vg-text-primary);
+            margin: 0;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        /* Severity Badges */
+        .badge-severity-critical {
+            background: rgba(239, 68, 68, 0.15);
+            color: #f87171;
+            border: 1px solid rgba(239, 68, 68, 0.35);
+            font-weight: 600;
+            padding: 0.35em 0.65em;
+            border-radius: 6px;
+            font-size: 0.75rem;
+        }
+
+        .badge-severity-high {
+            background: rgba(249, 115, 22, 0.15);
+            color: #fb923c;
+            border: 1px solid rgba(249, 115, 22, 0.35);
+            font-weight: 600;
+            padding: 0.35em 0.65em;
+            border-radius: 6px;
+            font-size: 0.75rem;
+        }
+
+        .badge-severity-medium {
+            background: rgba(234, 179, 8, 0.15);
+            color: #facc15;
+            border: 1px solid rgba(234, 179, 8, 0.35);
+            font-weight: 600;
+            padding: 0.35em 0.65em;
+            border-radius: 6px;
+            font-size: 0.75rem;
+        }
+
+        .badge-severity-low {
+            background: rgba(59, 130, 246, 0.15);
+            color: #60a5fa;
+            border: 1px solid rgba(59, 130, 246, 0.35);
+            font-weight: 600;
+            padding: 0.35em 0.65em;
+            border-radius: 6px;
+            font-size: 0.75rem;
+        }
+
+        .badge-status-open {
+            background: rgba(239, 68, 68, 0.1);
+            color: #f87171;
+            border: 1px solid rgba(239, 68, 68, 0.25);
+            padding: 0.25rem 0.5rem;
+            border-radius: 6px;
+            font-size: 0.75rem;
+        }
+
+        .badge-status-inprogress {
+            background: rgba(59, 130, 246, 0.1);
+            color: #60a5fa;
+            border: 1px solid rgba(59, 130, 246, 0.25);
+            padding: 0.25rem 0.5rem;
+            border-radius: 6px;
+            font-size: 0.75rem;
+        }
+
+        .badge-status-remediated {
+            background: rgba(16, 185, 129, 0.1);
+            color: #34d399;
+            border: 1px solid rgba(16, 185, 129, 0.25);
+            padding: 0.25rem 0.5rem;
+            border-radius: 6px;
+            font-size: 0.75rem;
+        }
+
+        .badge-status-acceptedrisk {
+            background: rgba(234, 179, 8, 0.1);
+            color: #facc15;
+            border: 1px solid rgba(234, 179, 8, 0.25);
+            padding: 0.25rem 0.5rem;
+            border-radius: 6px;
+            font-size: 0.75rem;
+        }
+
+        .badge-kev {
+            background: linear-gradient(135deg, #dc2626 0%, #991b1b 100%);
+            color: #ffffff;
+            font-weight: 700;
+            padding: 0.2rem 0.5rem;
+            border-radius: 4px;
+            font-size: 0.7rem;
+            letter-spacing: 0.5px;
+            box-shadow: 0 0 8px rgba(220, 38, 38, 0.4);
+        }
+
+        /* Custom Tables */
+        .vg-table {
+            width: 100%;
+            border-collapse: separate;
+            border-spacing: 0;
+            color: var(--vg-text-secondary);
+        }
+
+        .vg-table th {
+            background-color: #0e1526;
+            color: var(--vg-text-muted);
+            font-size: 0.75rem;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            padding: 0.85rem 1rem;
+            border-bottom: 1px solid var(--vg-border);
+        }
+
+        .vg-table td {
+            padding: 0.9rem 1rem;
+            border-bottom: 1px solid var(--vg-border-subtle);
+            font-size: 0.875rem;
+            vertical-align: middle;
+        }
+
+        .vg-table tr:hover td {
+            background-color: rgba(255, 255, 255, 0.02);
+            color: #ffffff;
+        }
+
+        /* Form Controls */
+        .form-control-vg, .form-select-vg {
+            background-color: #0e1526;
+            border: 1px solid var(--vg-border);
+            color: #f1f5f9;
+            border-radius: 8px;
+            padding: 0.55rem 0.85rem;
+            font-size: 0.875rem;
+        }
+
+        .form-control-vg:focus, .form-select-vg:focus {
+            background-color: #131b2e;
+            border-color: #3b82f6;
+            color: #ffffff;
+            outline: none;
+            box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.25);
+        }
+
+        .btn-vg-primary {
+            background: linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%);
+            color: #ffffff;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 8px;
+            font-weight: 600;
+            font-size: 0.875rem;
+            padding: 0.55rem 1.1rem;
+            transition: all 0.15s;
+        }
+
+        .btn-vg-primary:hover {
+            background: linear-gradient(135deg, #1d4ed8 0%, #1e40af 100%);
+            color: #ffffff;
+            box-shadow: 0 0 12px rgba(37, 99, 235, 0.4);
+        }
+
+        .btn-vg-secondary {
+            background: #18223a;
+            color: var(--vg-text-secondary);
+            border: 1px solid var(--vg-border);
+            border-radius: 8px;
+            font-weight: 500;
+            font-size: 0.875rem;
+            padding: 0.55rem 1rem;
+        }
+
+        .btn-vg-secondary:hover {
+            background: #202c4b;
+            color: #ffffff;
+        }
+
+        /* Terminal Console */
+        .terminal-box {
+            background-color: #060911;
+            border: 1px solid #1e293b;
+            border-radius: 8px;
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.82rem;
+            color: #38bdf8;
+            padding: 1rem;
+            height: 340px;
+            overflow-y: auto;
+            white-space: pre-wrap;
+            line-height: 1.5;
+        }
+
+        /* KPI Metric Cards */
+        .kpi-card {
+            background-color: var(--vg-bg-card);
+            border: 1px solid var(--vg-border);
+            border-radius: 12px;
+            padding: 1.2rem;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .kpi-title {
+            font-size: 0.75rem;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            color: var(--vg-text-muted);
+            font-weight: 600;
+            margin-bottom: 0.4rem;
+        }
+
+        .kpi-value {
+            font-size: 1.75rem;
+            font-weight: 700;
+            color: #ffffff;
+            line-height: 1.2;
+        }
+
+        .kpi-icon-bg {
+            position: absolute;
+            right: 1.2rem;
+            top: 1.2rem;
+            font-size: 2.2rem;
+            opacity: 0.12;
+        }
+    </style>
+</head>
+<body>
+    <div class="app-wrapper">
+        <!-- Sidebar Navigation -->
+        <aside class="app-sidebar">
+            <a href="/" class="sidebar-brand">
+                <i class="fa-solid fa-shield-halved"></i>
+                <div>
+                    <span>VulnGuard</span>
+                    <span class="badge-tag">ENTERPRISE</span>
+                </div>
+            </a>
+
+            <div class="sidebar-nav">
+                <div class="nav-section-title">Core Operations</div>
+                <a href="@Url.Action("Index", "Dashboard")" class="nav-link-custom @(ViewContext.RouteData.Values["controller"]?.ToString() == "Dashboard" ? "active" : "")">
+                    <i class="fa-solid fa-chart-pie"></i>
+                    <span>Dashboard</span>
+                </a>
+                <a href="@Url.Action("Index", "Assets")" class="nav-link-custom @(ViewContext.RouteData.Values["controller"]?.ToString() == "Assets" ? "active" : "")">
+                    <i class="fa-solid fa-server"></i>
+                    <span>Assets & Surface</span>
+                </a>
+                <a href="@Url.Action("Index", "Vulnerabilities")" class="nav-link-custom @(ViewContext.RouteData.Values["controller"]?.ToString() == "Vulnerabilities" && ViewContext.RouteData.Values["action"]?.ToString() == "Index" ? "active" : "")">
+                    <i class="fa-solid fa-bug"></i>
+                    <span>Findings</span>
+                </a>
+                <a href="@Url.Action("Catalog", "Vulnerabilities")" class="nav-link-custom @(ViewContext.RouteData.Values["action"]?.ToString() == "Catalog" ? "active" : "")">
+                    <i class="fa-solid fa-book-skull"></i>
+                    <span>CVE Catalog</span>
+                </a>
+
+                <div class="nav-section-title mt-3">Detection & Endpoint Defense</div>
+                <a href="@Url.Action("Index", "PcHealth")" class="nav-link-custom @(ViewContext.RouteData.Values["controller"]?.ToString() == "PcHealth" ? "active" : "")">
+                    <i class="fa-solid fa-heart-pulse text-danger"></i>
+                    <span>PC Full Healthcheck</span>
+                </a>
+                <a href="@Url.Action("Index", "Hardening")" class="nav-link-custom @(ViewContext.RouteData.Values["controller"]?.ToString() == "Hardening" ? "active" : "")">
+                    <i class="fa-solid fa-lock text-warning"></i>
+                    <span>Hardening & Shields</span>
+                </a>
+                <a href="@Url.Action("Index", "Firewall")" class="nav-link-custom @(ViewContext.RouteData.Values["controller"]?.ToString() == "Firewall" ? "active" : "")">
+                    <i class="fa-solid fa-shield-halved text-primary"></i>
+                    <span>Firewall Defense</span>
+                </a>
+                <a href="@Url.Action("Index", "IdsIps")" class="nav-link-custom @(ViewContext.RouteData.Values["controller"]?.ToString() == "IdsIps" ? "active" : "")">
+                    <i class="fa-solid fa-tower-broadcast text-danger"></i>
+                    <span>IDS / IPS Engine</span>
+                </a>
+                <a href="@Url.Action("Index", "Vpn")" class="nav-link-custom @(ViewContext.RouteData.Values["controller"]?.ToString() == "Vpn" ? "active" : "")">
+                    <i class="fa-solid fa-shield-halved text-success"></i>
+                    <span>SecureVPN Tunnel</span>
+                </a>
+                <a href="@Url.Action("SmartScan", "Scanner")" class="nav-link-custom @(ViewContext.RouteData.Values["action"]?.ToString() == "SmartScan" ? "active" : "")">
+                    <i class="fa-solid fa-laptop-medical text-info"></i>
+                    <span>PC Smart Audit</span>
+                </a>
+                <a href="@Url.Action("Index", "HashTool")" class="nav-link-custom @(ViewContext.RouteData.Values["controller"]?.ToString() == "HashTool" ? "active" : "")">
+                    <i class="fa-solid fa-fingerprint text-info"></i>
+                    <span>Hash Inspector</span>
+                </a>
+                <a href="@Url.Action("Index", "Cryptii")" class="nav-link-custom @(ViewContext.RouteData.Values["controller"]?.ToString() == "Cryptii" ? "active" : "")">
+                    <i class="fa-solid fa-key text-warning"></i>
+                    <span>Cryptii Studio</span>
+                </a>
+                <a href="@Url.Action("FileScan", "Scanner")" class="nav-link-custom @(ViewContext.RouteData.Values["action"]?.ToString() == "FileScan" ? "active" : "")">
+                    <i class="fa-solid fa-file-shield text-success"></i>
+                    <span>File & Hash Sentry</span>
+                </a>
+                <a href="@Url.Action("Index", "Scanner")" class="nav-link-custom @(ViewContext.RouteData.Values["controller"]?.ToString() == "Scanner" && ViewContext.RouteData.Values["action"]?.ToString() != "SmartScan" && ViewContext.RouteData.Values["action"]?.ToString() != "FileScan" ? "active" : "")">
+                    <i class="fa-solid fa-radar"></i>
+                    <span>Network Scanner</span>
+                </a>
+                <a href="@Url.Action("Index", "Remediation")" class="nav-link-custom @(ViewContext.RouteData.Values["controller"]?.ToString() == "Remediation" ? "active" : "")">
+                    <i class="fa-solid fa-list-check"></i>
+                    <span>SLA & Remediation</span>
+                </a>
+                <a href="@Url.Action("Index", "ThreatIntel")" class="nav-link-custom @(ViewContext.RouteData.Values["controller"]?.ToString() == "ThreatIntel" ? "active" : "")">
+                    <i class="fa-solid fa-bolt-lightning text-warning"></i>
+                    <span>CISA KEV Threat Feed</span>
+                </a>
+
+                <div class="nav-section-title mt-3">Governance & Compliance</div>
+                <a href="@Url.Action("Index", "Reports")" class="nav-link-custom @(ViewContext.RouteData.Values["controller"]?.ToString() == "Reports" && ViewContext.RouteData.Values["action"]?.ToString() == "Index" ? "active" : "")">
+                    <i class="fa-solid fa-file-shield"></i>
+                    <span>Compliance Matrices</span>
+                </a>
+                <a href="@Url.Action("ExecutiveSummary", "Reports")" class="nav-link-custom @(ViewContext.RouteData.Values["action"]?.ToString() == "ExecutiveSummary" ? "active" : "")">
+                    <i class="fa-solid fa-file-lines"></i>
+                    <span>Executive Summary</span>
+                </a>
+            </div>
+
+            <!-- Footer user profile badge -->
+            <div class="p-3 border-top border-secondary-subtle d-flex align-items-center gap-2" style="background-color: #0b0f19;">
+                <div class="rounded-circle bg-primary text-white d-flex align-items-center justify-content-center fw-bold" style="width: 32px; height: 32px; font-size: 0.8rem;">
+                    SO
+                </div>
+                <div class="overflow-hidden">
+                    <div class="fw-semibold text-white small text-truncate">SecOps Lead</div>
+                    <div class="text-muted" style="font-size: 0.7rem;"><span class="badge bg-success p-1" style="font-size:0.55rem;">LIVE</span> Sensor Online</div>
+                </div>
+            </div>
+        </aside>
+
+        <!-- Main Content Panel -->
+        <main class="main-content">
+            <!-- Toast / Alert notifications -->
+            @if (TempData["SuccessMessage"] != null)
+            {
+                <div class="alert alert-success alert-dismissible fade show border-0 bg-success-subtle text-success-emphasis mb-4" role="alert">
+                    <i class="fa-solid fa-circle-check me-2"></i> @TempData["SuccessMessage"]
+                    <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                </div>
+            }
+
+            @RenderBody()
+        </main>
+    </div>
+
+    <!-- Bootstrap 5 Bundle JS -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+    @await RenderSectionAsync("Scripts", required: false)
+</body>
+</html>

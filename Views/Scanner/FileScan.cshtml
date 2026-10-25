@@ -1,0 +1,236 @@
+@model vulnerability_management.Models.FileScanRequest
+@{
+    ViewData["Title"] = "On-Demand File & Malware Hash Scanner";
+    var result = ViewBag.ScanResult as vulnerability_management.Models.FileScanResult;
+}
+
+<div class="top-navbar">
+    <div>
+        <div class="d-flex align-items-center gap-2 mb-1">
+            <a href="@Url.Action("Index", "Scanner")" class="text-muted text-decoration-none small">&larr; Back to Scanner</a>
+            <span class="text-muted">/</span>
+            <span class="text-white small">File & Hash Sentry</span>
+        </div>
+        <h3 class="fw-bold mb-0 text-white"><i class="fa-solid fa-file-shield text-primary me-2"></i>On-Demand File & Malware Hash Scanner</h3>
+    </div>
+</div>
+
+<!-- Scan Configuration & Preset Cards -->
+<div class="row g-4 mb-4">
+    <!-- Preset Targets -->
+    <div class="col-lg-5">
+        <div class="vg-card h-100">
+            <div class="vg-card-header">
+                <h6 class="vg-card-title"><i class="fa-solid fa-folder-tree text-info"></i> Quick Target Presets</h6>
+            </div>
+            <p class="text-muted small">Choose a common high-risk user directory to immediately scan for untrusted executables, trojans, and double-extension masquerading.</p>
+            <div class="d-grid gap-2">
+                <a href="@Url.Action("FileScan", "Scanner", new { preset = "Downloads" })" class="btn btn-vg-secondary d-flex align-items-center justify-content-between text-start p-2">
+                    <div>
+                        <div class="fw-bold text-white"><i class="fa-solid fa-download text-primary me-2"></i> User Downloads</div>
+                        <div class="text-muted" style="font-size: 0.75rem;">Default download location for web browsers</div>
+                    </div>
+                    <i class="fa-solid fa-chevron-right text-muted"></i>
+                </a>
+                <a href="@Url.Action("FileScan", "Scanner", new { preset = "Desktop" })" class="btn btn-vg-secondary d-flex align-items-center justify-content-between text-start p-2">
+                    <div>
+                        <div class="fw-bold text-white"><i class="fa-solid fa-desktop text-warning me-2"></i> User Desktop</div>
+                        <div class="text-muted" style="font-size: 0.75rem;">Active workspace files and shortcuts</div>
+                    </div>
+                    <i class="fa-solid fa-chevron-right text-muted"></i>
+                </a>
+                <a href="@Url.Action("FileScan", "Scanner", new { preset = "Temp" })" class="btn btn-vg-secondary d-flex align-items-center justify-content-between text-start p-2">
+                    <div>
+                        <div class="fw-bold text-white"><i class="fa-solid fa-fire text-danger me-2"></i> Local Temp Directory</div>
+                        <div class="text-muted" style="font-size: 0.75rem;">Common staging area for dropper payloads</div>
+                    </div>
+                    <i class="fa-solid fa-chevron-right text-muted"></i>
+                </a>
+            </div>
+        </div>
+    </div>
+
+    <!-- Target Form -->
+    <div class="col-lg-7">
+        <div class="vg-card h-100">
+            <div class="vg-card-header">
+                <h6 class="vg-card-title"><i class="fa-solid fa-magnifying-glass text-primary"></i> Scan Target Configuration</h6>
+            </div>
+            <form method="post" action="@Url.Action("RunFileScan", "Scanner")">
+                @Html.AntiForgeryToken()
+                <div class="mb-3">
+                    <label class="form-label text-muted small">Target Directory or File Path</label>
+                    <input asp-for="TargetPath" class="form-control form-control-vg mono" placeholder="e.g. C:\Users\Username\Downloads" required />
+                    <div class="form-text text-muted" style="font-size: 0.75rem;">Full absolute path to any folder or individual file on your system.</div>
+                </div>
+
+                <div class="row g-3 mb-3">
+                    <div class="col-md-6 d-flex align-items-center">
+                        <div class="form-check form-switch">
+                            <input class="form-check-input" type="checkbox" asp-for="IncludeSubdirectories" checked>
+                            <label class="form-check-label text-light small" asp-for="IncludeSubdirectories">
+                                Recursively Scan Subdirectories
+                            </label>
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label text-muted small">Max File Size Limit (MB)</label>
+                        <input asp-for="MaxFileSizeMb" type="number" class="form-control form-control-vg" min="1" max="1000" />
+                    </div>
+                </div>
+
+                <div class="d-flex justify-content-end gap-2 border-top border-secondary-subtle pt-3">
+                    <button type="submit" class="btn btn-vg-primary w-100 py-2">
+                        <i class="fa-solid fa-shield-virus me-2"></i> Compute Hashes & Scan for Threats
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+@if (result != null)
+{
+    <!-- Scan Results Summary KPI Grid -->
+    <div class="row g-3 mb-4">
+        <div class="col-md-3">
+            <div class="kpi-card">
+                <div class="kpi-title">Files Scanned</div>
+                <div class="kpi-value">@result.TotalFilesScanned</div>
+                <div class="small text-muted mt-2">
+                    <i class="fa-solid fa-stopwatch me-1"></i> Completed in @result.Duration.TotalSeconds.ToString("0.00")s
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="kpi-card">
+                <div class="kpi-title">Clean Files</div>
+                <div class="kpi-value text-success">@result.CleanFilesCount</div>
+                <div class="small text-success mt-2">
+                    <i class="fa-solid fa-circle-check me-1"></i> Integrity Verified
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="kpi-card">
+                <div class="kpi-title">Suspicious / Heuristic</div>
+                <div class="kpi-value text-@(result.SuspiciousFilesCount > 0 ? "warning" : "muted")">@result.SuspiciousFilesCount</div>
+                <div class="small text-muted mt-2">
+                    <i class="fa-solid fa-triangle-exclamation me-1"></i> Masquerading / Obfuscation
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="kpi-card">
+                <div class="kpi-title">Known Malware Hashes</div>
+                <div class="kpi-value text-@(result.MaliciousFilesCount > 0 ? "danger" : "muted")">@result.MaliciousFilesCount</div>
+                <div class="small text-muted mt-2">
+                    <i class="fa-solid fa-skull me-1"></i> Exact Signature Matches
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Scanned Files Detail Table -->
+    <div class="vg-card">
+        <div class="vg-card-header">
+            <h6 class="vg-card-title"><i class="fa-solid fa-list-check text-info"></i> Scanned Items Inventory (@result.ScannedFiles.Count)</h6>
+            <span class="mono text-muted small">Path: @result.TargetPath</span>
+        </div>
+        <div class="table-responsive">
+            <table class="vg-table">
+                <thead>
+                    <tr>
+                        <th>File Name & Size</th>
+                        <th>Cryptographic SHA-256 Hash</th>
+                        <th>Threat Status</th>
+                        <th>Threat Classification</th>
+                        <th>Detection Analysis</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @if (!result.ScannedFiles.Any())
+                    {
+                        <tr>
+                            <td colspan="6" class="text-center py-4 text-muted">
+                                <i class="fa-solid fa-folder-open fs-3 mb-2 d-block"></i>
+                                No accessible files were found in the specified target path.
+                            </td>
+                        </tr>
+                    }
+                    @foreach (var file in result.ScannedFiles.OrderByDescending(f => f.ThreatLevel))
+                    {
+                        <tr>
+                            <td>
+                                <div class="fw-bold text-white small text-break">@file.FileName</div>
+                                <div class="text-muted" style="font-size: 0.72rem;">@((file.FileSizeBytes / 1024.0).ToString("0.0")) KB | @file.Extension</div>
+                            </td>
+                            <td style="max-width: 200px;">
+                                <div class="d-flex align-items-center gap-1">
+                                    <span class="mono text-muted small text-truncate" style="max-width: 160px;" title="@file.Sha256Hash">@file.Sha256Hash</span>
+                                    <button type="button" class="btn btn-link btn-sm text-secondary p-0 copy-btn" data-hash="@file.Sha256Hash" title="Copy Hash">
+                                        <i class="fa-solid fa-copy"></i>
+                                    </button>
+                                </div>
+                            </td>
+                            <td>
+                                @if (file.ThreatLevel == FileThreatLevel.Malicious)
+                                {
+                                    <span class="badge bg-danger text-white"><i class="fa-solid fa-skull me-1"></i> MALICIOUS</span>
+                                }
+                                else if (file.ThreatLevel == FileThreatLevel.Suspicious)
+                                {
+                                    <span class="badge bg-warning text-dark"><i class="fa-solid fa-triangle-exclamation me-1"></i> SUSPICIOUS</span>
+                                }
+                                else
+                                {
+                                    <span class="badge bg-success-subtle text-success"><i class="fa-solid fa-check me-1"></i> CLEAN</span>
+                                }
+                            </td>
+                            <td>
+                                <div class="fw-semibold text-white small">@file.ThreatName</div>
+                                @if (file.HeuristicFlags.Any())
+                                {
+                                    <div class="d-flex gap-1 mt-1">
+                                        @foreach (var flag in file.HeuristicFlags)
+                                        {
+                                            <span class="badge bg-dark border border-secondary text-secondary" style="font-size: 0.65rem;">@flag</span>
+                                        }
+                                    </div>
+                                }
+                            </td>
+                            <td style="max-width: 280px;">
+                                <div class="small text-light">@file.DetectionReason</div>
+                            </td>
+                            <td>
+                                <a href="https://www.virustotal.com/gui/search/@file.Sha256Hash" target="_blank" class="btn btn-vg-secondary btn-sm py-1 px-2 text-primary" title="Search Hash on VirusTotal">
+                                    <i class="fa-solid fa-arrow-up-right-from-square me-1"></i> VirusTotal
+                                </a>
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+    </div>
+}
+
+@section Scripts {
+<script>
+    document.addEventListener('DOMContentLoaded', () => {
+        document.querySelectorAll('.copy-btn').forEach(btn => {
+            btn.addEventListener('click', () => {
+                const hash = btn.getAttribute('data-hash');
+                if (hash) {
+                    navigator.clipboard.writeText(hash).then(() => {
+                        const icon = btn.querySelector('i');
+                        icon.className = 'fa-solid fa-check text-success';
+                        setTimeout(() => { icon.className = 'fa-solid fa-copy'; }, 1500);
+                    });
+                }
+            });
+        });
+    });
+</script>
+}

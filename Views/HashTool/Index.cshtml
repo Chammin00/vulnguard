@@ -1,0 +1,427 @@
+@{
+    ViewData["Title"] = "Cryptographic Hash Inspector & Threat Verifier";
+    var activeTab = ViewBag.ActiveTab as string ?? "lookup";
+    var lookupResult = ViewBag.LookupResult as vulnerability_management.Models.HashLookupResult;
+    var fileResult = ViewBag.FileResult as vulnerability_management.Models.FileHashCalculateResult;
+    var bulkResult = ViewBag.BulkResult as vulnerability_management.Models.BulkHashParseResult;
+    var hashInput = ViewBag.HashInput as string ?? "";
+    var expectedHash = ViewBag.ExpectedHash as string ?? "";
+    var localPath = ViewBag.LocalPath as string ?? "";
+    var bulkText = ViewBag.BulkText as string ?? "";
+}
+
+<div class="top-navbar">
+    <div>
+        <div class="d-flex align-items-center gap-2 mb-1">
+            <a href="@Url.Action("Index", "Dashboard")" class="text-muted text-decoration-none small">&larr; Back to Dashboard</a>
+            <span class="text-muted">/</span>
+            <span class="text-white small">Hash Sentry & OSINT</span>
+        </div>
+        <h3 class="fw-bold mb-0 text-white"><i class="fa-solid fa-fingerprint text-primary me-2"></i>Cryptographic Hash Inspector & Threat Verifier</h3>
+    </div>
+</div>
+
+<!-- Navigation Tabs -->
+<ul class="nav nav-pills mb-4 gap-2" id="hashTabs" role="tablist">
+    <li class="nav-item" role="presentation">
+        <button class="btn @(activeTab == "lookup" ? "btn-vg-primary" : "btn-vg-secondary")" id="lookup-tab" data-bs-toggle="pill" data-bs-target="#lookup-pane" type="button" role="tab">
+            <i class="fa-solid fa-magnifying-glass me-2"></i> Threat Hash Lookup & OSINT
+        </button>
+    </li>
+    <li class="nav-item" role="presentation">
+        <button class="btn @(activeTab == "calculate" ? "btn-vg-primary" : "btn-vg-secondary")" id="calculate-tab" data-bs-toggle="pill" data-bs-target="#calculate-pane" type="button" role="tab">
+            <i class="fa-solid fa-calculator me-2"></i> File Hash Calculator & Verifier
+        </button>
+    </li>
+    <li class="nav-item" role="presentation">
+        <button class="btn @(activeTab == "bulk" ? "btn-vg-primary" : "btn-vg-secondary")" id="bulk-tab" data-bs-toggle="pill" data-bs-target="#bulk-pane" type="button" role="tab">
+            <i class="fa-solid fa-list-check me-2"></i> Bulk Log & Text Hash Parser
+        </button>
+    </li>
+</ul>
+
+<div class="tab-content">
+    <!-- ------------------------------------------------------------- -->
+    <!-- TAB 1: THREAT HASH LOOKUP & OSINT                             -->
+    <!-- ------------------------------------------------------------- -->
+    <div class="tab-pane fade @(activeTab == "lookup" ? "show active" : "")" id="lookup-pane" role="tabpanel">
+        <div class="row g-4">
+            <div class="col-lg-7">
+                <div class="vg-card mb-4">
+                    <div class="vg-card-header">
+                        <h6 class="vg-card-title"><i class="fa-solid fa-search text-primary"></i> Query Hash Value</h6>
+                    </div>
+                    <form method="post" action="@Url.Action("Lookup", "HashTool")">
+                        @Html.AntiForgeryToken()
+                        <div class="mb-3">
+                            <label class="form-label text-muted small">Enter MD5, SHA-1, SHA-256, or SHA-512 Hash</label>
+                            <input type="text" name="HashValue" class="form-control form-control-vg mono" placeholder="Paste hash here (e.g. 24d004a104d4d54034dbc29c2f810772fd1ad303e1b19f7830f3c6ae2fa90132)..." value="@hashInput" required />
+                        </div>
+                        <div class="d-flex justify-content-between align-items-center">
+                            <div class="text-muted small">Auto-detects MD5 (32), SHA-1 (40), SHA-256 (64), SHA-512 (128)</div>
+                            <button type="submit" class="btn btn-vg-primary">
+                                <i class="fa-solid fa-bolt me-1"></i> Inspect Hash
+                            </button>
+                        </div>
+                    </form>
+                </div>
+
+                <!-- Sample Threat Hashes Card for Quick Testing -->
+                <div class="vg-card">
+                    <div class="vg-card-header">
+                        <h6 class="vg-card-title"><i class="fa-solid fa-flask text-info"></i> Quick Sample Threat Hashes for Testing</h6>
+                    </div>
+                    <div class="d-flex flex-wrap gap-2">
+                        <a href="@Url.Action("Index", "HashTool", new { tab = "lookup", hash = "24d004a104d4d54034dbc29c2f810772fd1ad303e1b19f7830f3c6ae2fa90132" })" class="btn btn-vg-secondary btn-sm mono">
+                            <i class="fa-solid fa-bug text-danger me-1"></i> WannaCry (SHA256)
+                        </a>
+                        <a href="@Url.Action("Index", "HashTool", new { tab = "lookup", hash = "d6f518e9508933b2a2cc09491ea720235334460fa8d7a188f6c3823467b7f14b" })" class="btn btn-vg-secondary btn-sm mono">
+                            <i class="fa-solid fa-lock text-danger me-1"></i> LockBit 3.0 (SHA256)
+                        </a>
+                        <a href="@Url.Action("Index", "HashTool", new { tab = "lookup", hash = "5c889f53e1a06700c9e6bb07e15549045b85a3a70f2f35760ec25227d891e4b8" })" class="btn btn-vg-secondary btn-sm mono">
+                            <i class="fa-solid fa-robot text-danger me-1"></i> Emotet Trojan (SHA256)
+                        </a>
+                        <a href="@Url.Action("Index", "HashTool", new { tab = "lookup", hash = "5f67b587a8b61c77840134446b7a5a8f5c357d6b8808dc994df56382103f6f3a" })" class="btn btn-vg-secondary btn-sm mono">
+                            <i class="fa-solid fa-key text-warning me-1"></i> Mimikatz (SHA256)
+                        </a>
+                        <a href="@Url.Action("Index", "HashTool", new { tab = "lookup", hash = "44d88612fea8a8f36de82e1278abb02f" })" class="btn btn-vg-secondary btn-sm mono">
+                            <i class="fa-solid fa-shield-check text-success me-1"></i> EICAR Test File (MD5)
+                        </a>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Threat Lookup Result Card -->
+            <div class="col-lg-5">
+                @if (lookupResult != null)
+                {
+                    <div class="vg-card h-100 border-@(lookupResult.Classification == vulnerability_management.Models.HashThreatClassification.KnownMalicious ? "danger" : lookupResult.Classification == vulnerability_management.Models.HashThreatClassification.Clean ? "success" : "secondary-subtle")">
+                        <div class="vg-card-header">
+                            <h6 class="vg-card-title"><i class="fa-solid fa-shield-virus text-warning"></i> Threat Intelligence Result</h6>
+                            <span class="badge bg-dark border border-secondary text-info mono">@lookupResult.Algorithm</span>
+                        </div>
+
+                        <div class="mb-3">
+                            <div class="text-muted small">Queried Hash</div>
+                            <div class="mono text-white text-break small p-2 bg-dark rounded border border-secondary-subtle">
+                                @lookupResult.QueryHash
+                            </div>
+                        </div>
+
+                        <div class="mb-3">
+                            <div class="text-muted small">Threat Classification</div>
+                            @if (lookupResult.Classification == vulnerability_management.Models.HashThreatClassification.KnownMalicious)
+                            {
+                                <div class="badge bg-danger text-white fs-6 mt-1">
+                                    <i class="fa-solid fa-skull me-1"></i> KNOWN MALICIOUS THREAT
+                                </div>
+                            }
+                            else if (lookupResult.Classification == vulnerability_management.Models.HashThreatClassification.Clean)
+                            {
+                                <div class="badge bg-success text-white fs-6 mt-1">
+                                    <i class="fa-solid fa-circle-check me-1"></i> VERIFIED CLEAN / TEST SAMPLE
+                                </div>
+                            }
+                            else
+                            {
+                                <div class="badge bg-secondary text-light fs-6 mt-1">
+                                    <i class="fa-solid fa-circle-question me-1"></i> NOT IN LOCAL CATALOG
+                                </div>
+                            }
+                        </div>
+
+                        <div class="mb-3">
+                            <div class="fw-bold text-white fs-5">@lookupResult.ThreatName</div>
+                            <div class="text-secondary small mt-1">@lookupResult.ThreatDetails</div>
+                            @if (!string.IsNullOrWhiteSpace(lookupResult.FirstSeen))
+                            {
+                                <div class="text-muted small mt-1">First Cataloged: <span class="text-light">@lookupResult.FirstSeen</span></div>
+                            }
+                        </div>
+
+                        <!-- External OSINT Cross-Reference Buttons -->
+                        <div class="border-top border-secondary-subtle pt-3 mt-3">
+                            <div class="text-muted small mb-2">Live Global OSINT Lookups:</div>
+                            <div class="d-grid gap-2">
+                                <a href="@lookupResult.VirusTotalUrl" target="_blank" class="btn btn-vg-secondary btn-sm d-flex justify-content-between align-items-center">
+                                    <span><i class="fa-solid fa-shield-cat text-primary me-2"></i> VirusTotal Search</span>
+                                    <i class="fa-solid fa-arrow-up-right-from-square small text-muted"></i>
+                                </a>
+                                <a href="@lookupResult.MalwareBazaarUrl" target="_blank" class="btn btn-vg-secondary btn-sm d-flex justify-content-between align-items-center">
+                                    <span><i class="fa-solid fa-bug text-danger me-2"></i> MalwareBazaar (abuse.ch)</span>
+                                    <i class="fa-solid fa-arrow-up-right-from-square small text-muted"></i>
+                                </a>
+                                <a href="@lookupResult.HybridAnalysisUrl" target="_blank" class="btn btn-vg-secondary btn-sm d-flex justify-content-between align-items-center">
+                                    <span><i class="fa-solid fa-microchip text-warning me-2"></i> Hybrid Analysis Sandbox</span>
+                                    <i class="fa-solid fa-arrow-up-right-from-square small text-muted"></i>
+                                </a>
+                            </div>
+                        </div>
+                    </div>
+                }
+                else
+                {
+                    <div class="vg-card h-100 text-center d-flex flex-column justify-content-center p-5 text-muted">
+                        <i class="fa-solid fa-fingerprint fs-1 mb-3 text-secondary"></i>
+                        <h5>No Hash Queried Yet</h5>
+                        <p class="small mb-0">Enter a hash value on the left or click one of the quick sample buttons to inspect threat intelligence details.</p>
+                    </div>
+                }
+            </div>
+        </div>
+    </div>
+
+    <!-- ------------------------------------------------------------- -->
+    <!-- TAB 2: FILE HASH CALCULATOR & INTEGRITY VERIFIER              -->
+    <!-- ------------------------------------------------------------- -->
+    <div class="tab-pane fade @(activeTab == "calculate" ? "show active" : "")" id="calculate-pane" role="tabpanel">
+        <div class="row g-4">
+            <div class="col-lg-6">
+                <div class="vg-card">
+                    <div class="vg-card-header">
+                        <h6 class="vg-card-title"><i class="fa-solid fa-file-shield text-primary"></i> Select File to Hash</h6>
+                    </div>
+                    <form method="post" action="@Url.Action("CalculateFile", "HashTool")" enctype="multipart/form-data">
+                        @Html.AntiForgeryToken()
+                        <div class="mb-3">
+                            <label class="form-label text-muted small">Upload File to Hash</label>
+                            <input type="file" name="fileUpload" class="form-control form-control-vg" />
+                        </div>
+                        <div class="text-center text-muted small my-2">- OR -</div>
+                        <div class="mb-3">
+                            <label class="form-label text-muted small">Specify Local File Path on PC</label>
+                            <input type="text" name="localPath" class="form-control form-control-vg mono" placeholder="e.g. C:\Users\Username\Downloads\installer.exe" value="@localPath" />
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label text-muted small">Optional: Expected Hash for Integrity Verification</label>
+                            <input type="text" name="expectedHash" class="form-control form-control-vg mono" placeholder="Paste vendor checksum (MD5, SHA-1, SHA-256, or SHA-512)..." value="@expectedHash" />
+                            <div class="form-text text-muted small">The tool will automatically compare the generated hash and verify if the file has been tampered with.</div>
+                        </div>
+                        <div class="d-flex justify-content-end border-top border-secondary-subtle pt-3 mt-3">
+                            <button type="submit" class="btn btn-vg-primary w-100 py-2">
+                                <i class="fa-solid fa-calculator me-1"></i> Calculate All Cryptographic Hashes
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+
+            <div class="col-lg-6">
+                @if (fileResult != null)
+                {
+                    <div class="vg-card">
+                        <div class="vg-card-header">
+                            <div>
+                                <h6 class="vg-card-title text-white mb-0">@fileResult.FileName</h6>
+                                <span class="text-muted small">Size: @fileResult.FileSizeFormatted</span>
+                            </div>
+                            @if (fileResult.HasExpectedHash)
+                            {
+                                @if (fileResult.IsHashMatch)
+                                {
+                                    <span class="badge bg-success fs-6"><i class="fa-solid fa-circle-check me-1"></i> HASH MATCH</span>
+                                }
+                                else
+                                {
+                                    <span class="badge bg-danger fs-6"><i class="fa-solid fa-triangle-exclamation me-1"></i> MISMATCH!</span>
+                                }
+                            }
+                        </div>
+
+                        @if (fileResult.HasExpectedHash)
+                        {
+                            <div class="p-3 bg-dark rounded border border-@(fileResult.IsHashMatch ? "success" : "danger") mb-3">
+                                <div class="fw-bold small text-@(fileResult.IsHashMatch ? "success" : "danger")">
+                                    <i class="fa-solid @(fileResult.IsHashMatch ? "fa-circle-check" : "fa-triangle-exclamation") me-1"></i>
+                                    @fileResult.MatchDetails
+                                </div>
+                            </div>
+                        }
+
+                        <div class="d-flex flex-column gap-3">
+                            <!-- SHA-256 -->
+                            <div>
+                                <div class="d-flex justify-content-between align-items-center mb-1">
+                                    <span class="fw-bold text-info small">SHA-256 (Industry Standard)</span>
+                                    <button class="btn btn-link btn-sm text-secondary p-0 copy-btn" data-hash="@fileResult.Sha256"><i class="fa-solid fa-copy"></i> Copy</button>
+                                </div>
+                                <div class="mono text-white small p-2 bg-dark rounded border border-secondary-subtle text-break">@fileResult.Sha256</div>
+                            </div>
+
+                            <!-- SHA-1 -->
+                            <div>
+                                <div class="d-flex justify-content-between align-items-center mb-1">
+                                    <span class="fw-bold text-primary small">SHA-1</span>
+                                    <button class="btn btn-link btn-sm text-secondary p-0 copy-btn" data-hash="@fileResult.Sha1"><i class="fa-solid fa-copy"></i> Copy</button>
+                                </div>
+                                <div class="mono text-white small p-2 bg-dark rounded border border-secondary-subtle text-break">@fileResult.Sha1</div>
+                            </div>
+
+                            <!-- MD5 -->
+                            <div>
+                                <div class="d-flex justify-content-between align-items-center mb-1">
+                                    <span class="fw-bold text-warning small">MD5</span>
+                                    <button class="btn btn-link btn-sm text-secondary p-0 copy-btn" data-hash="@fileResult.Md5"><i class="fa-solid fa-copy"></i> Copy</button>
+                                </div>
+                                <div class="mono text-white small p-2 bg-dark rounded border border-secondary-subtle text-break">@fileResult.Md5</div>
+                            </div>
+
+                            <!-- SHA-512 -->
+                            <div>
+                                <div class="d-flex justify-content-between align-items-center mb-1">
+                                    <span class="fw-bold text-secondary small">SHA-512</span>
+                                    <button class="btn btn-link btn-sm text-secondary p-0 copy-btn" data-hash="@fileResult.Sha512"><i class="fa-solid fa-copy"></i> Copy</button>
+                                </div>
+                                <div class="mono text-muted small p-2 bg-dark rounded border border-secondary-subtle text-break" style="font-size: 0.7rem;">@fileResult.Sha512</div>
+                            </div>
+                        </div>
+
+                        <div class="border-top border-secondary-subtle pt-3 mt-3 d-flex justify-content-between">
+                            <a href="@Url.Action("Index", "HashTool", new { tab = "lookup", hash = fileResult.Sha256 })" class="btn btn-vg-secondary btn-sm">
+                                <i class="fa-solid fa-shield-virus me-1"></i> Look up in Threat Catalog
+                            </a>
+                            <a href="https://www.virustotal.com/gui/search/@fileResult.Sha256" target="_blank" class="btn btn-vg-secondary btn-sm text-primary">
+                                <i class="fa-solid fa-arrow-up-right-from-square me-1"></i> Check VirusTotal
+                            </a>
+                        </div>
+                    </div>
+                }
+                else
+                {
+                    <div class="vg-card h-100 text-center d-flex flex-column justify-content-center p-5 text-muted">
+                        <i class="fa-solid fa-file-arrow-up fs-1 mb-3 text-secondary"></i>
+                        <h5>No File Selected</h5>
+                        <p class="small mb-0">Upload a file or enter a local file path on the left to compute MD5, SHA-1, SHA-256, and SHA-512 hashes.</p>
+                    </div>
+                }
+            </div>
+        </div>
+    </div>
+
+    <!-- ------------------------------------------------------------- -->
+    <!-- TAB 3: BULK LOG & TEXT HASH PARSER                           -->
+    <!-- ------------------------------------------------------------- -->
+    <div class="tab-pane fade @(activeTab == "bulk" ? "show active" : "")" id="bulk-pane" role="tabpanel">
+        <div class="vg-card mb-4">
+            <div class="vg-card-header">
+                <h6 class="vg-card-title"><i class="fa-solid fa-paste text-info"></i> Bulk Hash Extraction & Analysis Engine</h6>
+            </div>
+            <form method="post" action="@Url.Action("ParseBulk", "HashTool")">
+                @Html.AntiForgeryToken()
+                <div class="mb-3">
+                    <label class="form-label text-muted small">Paste logs, threat feeds, or raw text containing hashes</label>
+                    <textarea name="bulkText" rows="5" class="form-control form-control-vg mono" placeholder="Paste firewall logs, incident reports, or comma/line separated lists of hashes here..." required>@bulkText</textarea>
+                </div>
+                <div class="d-flex justify-content-end">
+                    <button type="submit" class="btn btn-vg-primary">
+                        <i class="fa-solid fa-bolt me-1"></i> Extract & Inspect All Hashes
+                    </button>
+                </div>
+            </form>
+        </div>
+
+        @if (bulkResult != null)
+        {
+            <div class="row g-3 mb-4">
+                <div class="col-3">
+                    <div class="p-3 border rounded bg-dark text-center">
+                        <div class="text-muted small">TOTAL EXTRACTED</div>
+                        <div class="fs-2 fw-bold text-white">@bulkResult.TotalHashesExtracted</div>
+                    </div>
+                </div>
+                <div class="col-3">
+                    <div class="p-3 border rounded bg-dark text-center">
+                        <div class="text-muted small">MALICIOUS HASHES</div>
+                        <div class="fs-2 fw-bold text-danger">@bulkResult.MaliciousCount</div>
+                    </div>
+                </div>
+                <div class="col-3">
+                    <div class="p-3 border rounded bg-dark text-center">
+                        <div class="text-muted small">CLEAN / TEST HASHES</div>
+                        <div class="fs-2 fw-bold text-success">@bulkResult.CleanCount</div>
+                    </div>
+                </div>
+                <div class="col-3">
+                    <div class="p-3 border rounded bg-dark text-center">
+                        <div class="text-muted small">UNCATALOGED</div>
+                        <div class="fs-2 fw-bold text-secondary">@bulkResult.UnknownCount</div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="vg-card">
+                <div class="table-responsive">
+                    <table class="vg-table">
+                        <thead>
+                            <tr>
+                                <th>Extracted Hash</th>
+                                <th>Algorithm</th>
+                                <th>Threat Status</th>
+                                <th>Threat Name / Description</th>
+                                <th>OSINT Action</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach (var item in bulkResult.Items)
+                            {
+                                <tr>
+                                    <td>
+                                        <div class="mono text-white small text-truncate" style="max-width: 250px;" title="@item.QueryHash">
+                                            @item.QueryHash
+                                        </div>
+                                    </td>
+                                    <td>
+                                        <span class="badge bg-dark border border-secondary text-info mono">@item.Algorithm</span>
+                                    </td>
+                                    <td>
+                                        @if (item.Classification == vulnerability_management.Models.HashThreatClassification.KnownMalicious)
+                                        {
+                                            <span class="badge bg-danger text-white"><i class="fa-solid fa-skull me-1"></i> MALICIOUS</span>
+                                        }
+                                        else if (item.Classification == vulnerability_management.Models.HashThreatClassification.Clean)
+                                        {
+                                            <span class="badge bg-success-subtle text-success"><i class="fa-solid fa-check me-1"></i> CLEAN / TEST</span>
+                                        }
+                                        else
+                                        {
+                                            <span class="badge bg-secondary-subtle text-secondary">UNCATALOGED</span>
+                                        }
+                                    </td>
+                                    <td>
+                                        <div class="fw-semibold text-white small">@item.ThreatName</div>
+                                        <div class="text-muted small text-truncate" style="max-width: 280px;">@item.ThreatDetails</div>
+                                    </td>
+                                    <td>
+                                        <a href="https://www.virustotal.com/gui/search/@item.QueryHash" target="_blank" class="btn btn-vg-secondary btn-sm py-1 px-2 text-primary" title="Search VirusTotal">
+                                            <i class="fa-solid fa-arrow-up-right-from-square"></i>
+                                        </a>
+                                    </td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        }
+    </div>
+</div>
+
+@section Scripts {
+<script>
+    document.addEventListener('DOMContentLoaded', () => {
+        document.querySelectorAll('.copy-btn').forEach(btn => {
+            btn.addEventListener('click', () => {
+                const hash = btn.getAttribute('data-hash');
+                if (hash) {
+                    navigator.clipboard.writeText(hash).then(() => {
+                        btn.innerHTML = '<i class="fa-solid fa-check text-success"></i> Copied';
+                        setTimeout(() => {
+                            btn.innerHTML = '<i class="fa-solid fa-copy"></i> Copy';
+                        }, 1500);
+                    });
+                }
+            });
+        });
+    });
+</script>
+}

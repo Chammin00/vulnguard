@@ -1,0 +1,227 @@
+@model vulnerability_management.Models.Asset
+@{
+    ViewData["Title"] = $"Asset: {Model.Hostname}";
+    var riskScore = ViewBag.RiskScore ?? 0.0;
+}
+
+<div class="top-navbar">
+    <div>
+        <div class="d-flex align-items-center gap-2 mb-1">
+            <a href="@Url.Action("Index", "Assets")" class="text-muted text-decoration-none small">&larr; Back to Assets</a>
+            <span class="text-muted">/</span>
+            <span class="text-white small">@Model.Hostname</span>
+        </div>
+        <h3 class="fw-bold mb-0 text-white"><i class="fa-solid fa-server text-primary me-2"></i>@Model.Hostname</h3>
+    </div>
+    <div class="d-flex gap-2">
+        <form method="post" action="@Url.Action("StartScan", "Scanner")">
+            @Html.AntiForgeryToken()
+            <input type="hidden" name="ScanName" value="Targeted Scan: @Model.Hostname" />
+            <input type="hidden" name="Target" value="@Model.IpAddress" />
+            <input type="hidden" name="ScanType" value="Full" />
+            <input type="hidden" name="AutoCreateFindings" value="true" />
+            <button type="submit" class="btn btn-vg-primary">
+                <i class="fa-solid fa-crosshairs me-1"></i> Scan Target Host
+            </button>
+        </form>
+        <a href="@Url.Action("Edit", "Assets", new { id = Model.Id })" class="btn btn-vg-secondary">
+            <i class="fa-solid fa-pen me-1"></i> Edit Asset
+        </a>
+    </div>
+</div>
+
+<!-- Asset Profile Specs & Risk Score Cards -->
+<div class="row g-4 mb-4">
+    <!-- Specifications -->
+    <div class="col-lg-8">
+        <div class="vg-card h-100">
+            <div class="vg-card-header">
+                <h6 class="vg-card-title"><i class="fa-solid fa-circle-info text-info"></i> System Specifications & Metadata</h6>
+                <span class="badge bg-secondary-subtle text-light">@Model.Environment</span>
+            </div>
+            <div class="row g-3">
+                <div class="col-md-6">
+                    <div class="text-muted small">IP Address</div>
+                    <div class="mono text-white fw-bold">@Model.IpAddress</div>
+                </div>
+                <div class="col-md-6">
+                    <div class="text-muted small">MAC Address</div>
+                    <div class="mono text-white">@(string.IsNullOrEmpty(Model.MacAddress) ? "N/A" : Model.MacAddress)</div>
+                </div>
+                <div class="col-md-6">
+                    <div class="text-muted small">Operating System</div>
+                    <div class="text-white">@Model.OperatingSystem</div>
+                </div>
+                <div class="col-md-6">
+                    <div class="text-muted small">Criticality Tier</div>
+                    <div>
+                        <span class="badge bg-dark border border-secondary text-secondary">
+                            @Model.Criticality.ToString().Replace("Tier1_", "Tier 1: ").Replace("Tier2_", "Tier 2: ").Replace("Tier3_", "Tier 3: ").Replace("Tier4_", "Tier 4: ")
+                        </span>
+                    </div>
+                </div>
+                <div class="col-md-6">
+                    <div class="text-muted small">System Owner / Custodian</div>
+                    <div class="text-white">@Model.Owner</div>
+                </div>
+                <div class="col-md-6">
+                    <div class="text-muted small">Last Security Scan</div>
+                    <div class="text-secondary">@(Model.LastScannedAt.HasValue ? Model.LastScannedAt.Value.ToString("yyyy-MM-dd HH:mm UTC") : "Never Scanned")</div>
+                </div>
+                <div class="col-12">
+                    <div class="text-muted small mb-1">Asset Tags</div>
+                    <div>
+                        @foreach (var tag in (Model.Tags ?? "").Split(new[] { ',', ' ' }, StringSplitOptions.RemoveEmptyEntries))
+                        {
+                            <span class="badge bg-secondary-subtle text-secondary me-1">#@tag</span>
+                        }
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Risk Summary Card -->
+    <div class="col-lg-4">
+        <div class="vg-card h-100 text-center d-flex flex-column justify-content-between">
+            <div class="vg-card-header">
+                <h6 class="vg-card-title"><i class="fa-solid fa-shield-virus text-warning"></i> Asset Risk Metric</h6>
+            </div>
+            <div class="my-auto py-3">
+                <div class="display-4 fw-bold text-@(riskScore > 70 ? "danger" : riskScore > 35 ? "warning" : "success")">
+                    @riskScore
+                </div>
+                <div class="text-muted small">Overall Asset Risk (0 - 100)</div>
+                <div class="mt-3">
+                    <span class="badge-severity-critical me-1">@Model.Findings.Count(f => f.Status != FindingStatus.Remediated && f.Vulnerability?.Severity == SeverityLevel.Critical) Critical</span>
+                    <span class="badge-severity-high">@Model.Findings.Count(f => f.Status != FindingStatus.Remediated && f.Vulnerability?.Severity == SeverityLevel.High) High</span>
+                </div>
+            </div>
+            <div class="border-top border-secondary-subtle pt-3 text-muted small">
+                Total Findings: @Model.Findings.Count | Resolved: @Model.Findings.Count(f => f.Status == FindingStatus.Remediated)
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Open Ports & Services Panel -->
+<div class="vg-card mb-4">
+    <div class="vg-card-header">
+        <h6 class="vg-card-title"><i class="fa-solid fa-network-wired text-primary"></i> Discovered Network Ports & Services</h6>
+    </div>
+    <div class="d-flex flex-wrap gap-2">
+        @if (string.IsNullOrWhiteSpace(Model.OpenPorts))
+        {
+            <div class="text-muted small py-2">No open ports recorded for this asset yet. Launch a scan to probe services.</div>
+        }
+        else
+        {
+            @foreach (var port in Model.OpenPorts.Split(new[] { ',', ';' }, StringSplitOptions.RemoveEmptyEntries))
+            {
+                <span class="badge bg-dark border border-primary text-primary px-3 py-2 fs-6 font-monospace">
+                    <i class="fa-solid fa-plug me-1 text-info"></i> @port.Trim()
+                </span>
+            }
+        }
+    </div>
+</div>
+
+<!-- Correlated Vulnerability Findings Table -->
+<div class="vg-card">
+    <div class="vg-card-header">
+        <h6 class="vg-card-title"><i class="fa-solid fa-bug text-danger"></i> Associated Vulnerability Findings (@Model.Findings.Count)</h6>
+    </div>
+    <div class="table-responsive">
+        <table class="vg-table">
+            <thead>
+                <tr>
+                    <th>CVE Identifier</th>
+                    <th>Vulnerability Title</th>
+                    <th>Severity</th>
+                    <th>CVSS</th>
+                    <th>Port</th>
+                    <th>SLA Due Date</th>
+                    <th>Status</th>
+                    <th>Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                @if (!Model.Findings.Any())
+                {
+                    <tr>
+                        <td colspan="8" class="text-center py-4 text-muted">
+                            <i class="fa-solid fa-circle-check text-success fs-3 mb-2 d-block"></i>
+                            No vulnerabilities identified on this asset. System is clean.
+                        </td>
+                    </tr>
+                }
+                @foreach (var finding in Model.Findings)
+                {
+                    <tr>
+                        <td>
+                            <div class="fw-bold text-white">
+                                <a href="@Url.Action("Details", "Vulnerabilities", new { id = finding.Id })" class="text-white text-decoration-none">
+                                    @finding.Vulnerability?.CveId
+                                </a>
+                                @if (finding.Vulnerability?.IsInCisaKev == true)
+                                {
+                                    <span class="badge-kev ms-1">KEV</span>
+                                }
+                            </div>
+                        </td>
+                        <td>
+                            <div class="text-white small">@finding.Vulnerability?.Title</div>
+                            <div class="text-muted small text-truncate" style="max-width: 250px;">@finding.Vulnerability?.AffectedComponent</div>
+                        </td>
+                        <td>
+                            @if (finding.Vulnerability?.Severity == SeverityLevel.Critical)
+                            {
+                                <span class="badge-severity-critical">Critical</span>
+                            }
+                            else if (finding.Vulnerability?.Severity == SeverityLevel.High)
+                            {
+                                <span class="badge-severity-high">High</span>
+                            }
+                            else if (finding.Vulnerability?.Severity == SeverityLevel.Medium)
+                            {
+                                <span class="badge-severity-medium">Medium</span>
+                            }
+                            else
+                            {
+                                <span class="badge-severity-low">Low</span>
+                            }
+                        </td>
+                        <td>
+                            <span class="fw-bold text-white mono">@finding.Vulnerability?.CvssScore</span>
+                        </td>
+                        <td>
+                            <span class="mono small text-secondary">@(finding.AffectedPort ?? "Host level")</span>
+                        </td>
+                        <td>
+                            @if (finding.IsSlaBreached)
+                            {
+                                <span class="badge bg-danger"><i class="fa-solid fa-triangle-exclamation"></i> Overdue</span>
+                            }
+                            else if (finding.Status == FindingStatus.Remediated)
+                            {
+                                <span class="badge bg-success">Resolved</span>
+                            }
+                            else
+                            {
+                                <span class="text-secondary small">@finding.DueDate.ToString("yyyy-MM-dd")</span>
+                            }
+                        </td>
+                        <td>
+                            <span class="badge-status-@finding.Status.ToString().ToLower()">@finding.Status</span>
+                        </td>
+                        <td>
+                            <a href="@Url.Action("Details", "Vulnerabilities", new { id = finding.Id })" class="btn btn-vg-secondary btn-sm py-1 px-2">
+                                <i class="fa-solid fa-arrow-right"></i>
+                            </a>
+                        </td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+</div>

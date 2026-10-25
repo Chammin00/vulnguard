@@ -1,0 +1,166 @@
+@model vulnerability_management.Models.HardeningChecklistResult
+@{
+    ViewData["Title"] = "Windows Security Hardening & Shield Optimizer";
+    var allCommands = string.Join("\n\n# -----------------------------------------------------\n", Model.Controls.Where(c => c.Status != "Applied" && !string.IsNullOrWhiteSpace(c.PowerShellCommand)).Select(c => $"# {c.Title}\n{c.PowerShellCommand}"));
+}
+
+<div class="top-navbar">
+    <div>
+        <div class="d-flex align-items-center gap-2 mb-1">
+            <a href="@Url.Action("Index", "Dashboard")" class="text-muted text-decoration-none small">&larr; Back to Dashboard</a>
+            <span class="text-muted">/</span>
+            <span class="text-white small">Endpoint Hardening</span>
+        </div>
+        <h3 class="fw-bold mb-0 text-white"><i class="fa-solid fa-lock text-primary me-2"></i>Windows Security Hardening & Shield Optimizer</h3>
+    </div>
+    <div class="d-flex gap-2">
+        <a href="@Url.Action("Index", "Hardening")" class="btn btn-vg-primary">
+            <i class="fa-solid fa-arrows-rotate me-1"></i> Re-Evaluate Posture
+        </a>
+    </div>
+</div>
+
+<!-- Top Hardening Score & Banner -->
+<div class="row g-4 mb-4">
+    <!-- Score Card -->
+    <div class="col-lg-4">
+        <div class="vg-card h-100 text-center d-flex flex-column justify-content-between p-4" style="background: linear-gradient(180deg, #131b2e 0%, #0d1424 100%);">
+            <div>
+                <div class="kpi-title mb-1"><i class="fa-solid fa-shield-halved text-info me-1"></i> Hardening Defense Index</div>
+                <div class="display-3 fw-bold my-2 text-@(Model.HardeningScore >= 90 ? "success" : Model.HardeningScore >= 70 ? "warning" : "danger")">
+                    @Model.HardeningScore<span class="fs-4 text-muted">/100</span>
+                </div>
+                <div class="fw-semibold text-white mb-2">@Model.AppliedControlsCount of @Model.TotalControlsCount Controls Enforced</div>
+                <span class="badge @(Model.HardeningScore >= 90 ? "bg-success" : Model.HardeningScore >= 70 ? "bg-warning text-dark" : "bg-danger") px-3 py-2 fs-6">
+                    @Model.HardeningStatus
+                </span>
+            </div>
+            <div class="border-top border-secondary-subtle pt-3 mt-3 text-muted small">
+                Target: <strong class="text-white">@Model.MachineName</strong> (@Model.OsDescription)
+            </div>
+        </div>
+    </div>
+
+    <!-- Quick Script & Summary Info -->
+    <div class="col-lg-8">
+        <div class="vg-card h-100 d-flex flex-column justify-content-between">
+            <div>
+                <div class="vg-card-header">
+                    <h6 class="vg-card-title"><i class="fa-solid fa-terminal text-success"></i> Administrator Hardening Commands</h6>
+                    <button class="btn btn-vg-secondary btn-sm py-1 px-2 copy-all-btn" data-all-commands="@allCommands">
+                        <i class="fa-solid fa-copy me-1"></i> Copy Pending Fixes
+                    </button>
+                </div>
+                <p class="text-muted small mb-2">
+                    Below is the unified defense baseline based on CIS (Center for Internet Security) and Microsoft Security Baselines. Each control neutralizes specific attack vectors (ransomware encryption, NTLM relaying, memory injection, and silent privilege elevation).
+                </p>
+                <div class="p-3 bg-dark rounded border border-secondary-subtle">
+                    <div class="text-info fw-bold small mb-1"><i class="fa-solid fa-circle-info me-1"></i> How to apply:</div>
+                    <div class="text-secondary small">
+                        Open <strong>PowerShell as Administrator</strong> and run the specific command listed under each control, or use the Windows Settings / Group Policy location shown.
+                    </div>
+                </div>
+            </div>
+            <div class="d-flex justify-content-between text-muted small pt-3 border-top border-secondary-subtle">
+                <span>Applied: <strong class="text-success">@Model.AppliedControlsCount</strong></span>
+                <span>Attention Recommended: <strong class="text-warning">@(Model.TotalControlsCount - Model.AppliedControlsCount)</strong></span>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- 10 Hardening Controls Matrix Cards -->
+<div class="row g-3">
+    @foreach (var control in Model.Controls)
+    {
+        <div class="col-12">
+            <div class="vg-card border-@(control.Status == "Applied" ? "secondary-subtle" : control.Status == "NeedsAttention" ? "warning" : "secondary-subtle")">
+                <div class="d-flex flex-wrap align-items-center justify-content-between gap-2 mb-2 pb-2 border-bottom border-secondary-subtle">
+                    <div class="d-flex align-items-center gap-2">
+                        <span class="badge bg-dark border border-secondary text-secondary">@control.Category</span>
+                        <h6 class="text-white mb-0 fw-bold">@control.Title</h6>
+                    </div>
+                    <div>
+                        @if (control.Status == "Applied")
+                        {
+                            <span class="badge bg-success text-white"><i class="fa-solid fa-check-circle me-1"></i> ENFORCED (PASS)</span>
+                        }
+                        else if (control.Status == "NeedsAttention")
+                        {
+                            <span class="badge bg-warning text-dark"><i class="fa-solid fa-triangle-exclamation me-1"></i> NEEDS ATTENTION</span>
+                        }
+                        else
+                        {
+                            <span class="badge bg-info text-dark"><i class="fa-solid fa-circle-info me-1"></i> OPTIONAL HARDENING</span>
+                        }
+                    </div>
+                </div>
+
+                <div class="row g-3">
+                    <div class="col-lg-8">
+                        <div class="small mb-2">
+                            <span class="text-muted">Security Benefit: </span>
+                            <span class="text-light">@control.SecurityBenefit</span>
+                        </div>
+                        <div class="d-flex flex-wrap gap-3 small text-muted mb-2">
+                            <div>Current State: <strong class="text-@(control.Status == "Applied" ? "success" : "warning")">@control.CurrentState</strong></div>
+                            <div>Recommended: <strong class="text-info">@control.RecommendedState</strong></div>
+                            <div>Mitigates: <span class="badge bg-danger-subtle text-danger">@control.ThreatMitigated</span></div>
+                        </div>
+                        <div class="text-muted" style="font-size: 0.75rem;">
+                            <i class="fa-solid fa-sliders me-1"></i> Config: @control.ConfigurationLocation
+                        </div>
+                    </div>
+
+                    <div class="col-lg-4">
+                        <div class="p-2 bg-dark rounded border border-secondary-subtle">
+                            <div class="d-flex justify-content-between align-items-center mb-1">
+                                <span class="mono text-muted" style="font-size: 0.7rem;">PowerShell Command</span>
+                                <button type="button" class="btn btn-link btn-sm text-secondary p-0 copy-cmd-btn" data-cmd="@control.PowerShellCommand" title="Copy Command">
+                                    <i class="fa-solid fa-copy"></i>
+                                </button>
+                            </div>
+                            <div class="mono text-info text-break" style="font-size: 0.72rem; line-height: 1.3;">
+                                @control.PowerShellCommand
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    }
+</div>
+
+@section Scripts {
+<script>
+    document.addEventListener('DOMContentLoaded', () => {
+        document.querySelectorAll('.copy-cmd-btn').forEach(btn => {
+            btn.addEventListener('click', () => {
+                const cmd = btn.getAttribute('data-cmd');
+                if (cmd) {
+                    navigator.clipboard.writeText(cmd).then(() => {
+                        const icon = btn.querySelector('i');
+                        icon.className = 'fa-solid fa-check text-success';
+                        setTimeout(() => { icon.className = 'fa-solid fa-copy'; }, 1500);
+                    });
+                }
+            });
+        });
+
+        const copyAllBtn = document.querySelector('.copy-all-btn');
+        if (copyAllBtn) {
+            copyAllBtn.addEventListener('click', () => {
+                const allCmds = copyAllBtn.getAttribute('data-all-commands');
+                if (allCmds) {
+                    navigator.clipboard.writeText(allCmds).then(() => {
+                        copyAllBtn.innerHTML = '<i class="fa-solid fa-check text-success me-1"></i> Copied to Clipboard!';
+                        setTimeout(() => {
+                            copyAllBtn.innerHTML = '<i class="fa-solid fa-copy me-1"></i> Copy Pending Fixes';
+                        }, 2000);
+                    });
+                }
+            });
+        }
+    });
+</script>
+}
