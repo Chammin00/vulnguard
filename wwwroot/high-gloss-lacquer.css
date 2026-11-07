@@ -1,0 +1,401 @@
+/**
+ * Antigravity High-Gloss Lacquer System (high-gloss-lacquer.css)
+ *
+ * Physical Material Optics:
+ * 1. Curved Specular Glare Shield (::before): 135deg glass clear-coat shield with 1px top highlight
+ * 2. Pointer-Tracked Specular Flare (::after): --mouse-x, --mouse-y dynamic bloom
+ * 3. Hover Glare Sweep Sheen: skewX(-25deg) left-to-right sweep via cubic-bezier(0.16, 1, 0.3, 1)
+ * 4. Wet Shadows & Beveled Depth: multi-stage box-shadows 0 8px 32px -4px rgba(2, 6, 18, 0.8)
+ * 5. Color Hierarchy: Deep Lacquer Navy (#050B18 to #0B162C), Cobalt Glaze (#0E1D3A), Polished Camel (#C5A059), Sunlit Tan (#DFBA73)
+ */
+
+:root {
+  /* High-Gloss Optical Color Tokens */
+  --lacquer-navy-base: #050B18;
+  --lacquer-navy-deep: #0B162C;
+  --lacquer-cobalt-glaze: #0E1D3A;
+  --lacquer-cobalt-light: #16284D;
+  --lacquer-tan-camel: #C5A059;
+  --lacquer-tan-sunlit: #DFBA73;
+  --lacquer-tan-glow: rgba(197, 160, 89, 0.3);
+  --lacquer-specular-white: rgba(255, 255, 255, 0.75);
+  --lacquer-wet-abyss: #020610;
+
+  /* Physical Shadow Profiles */
+  --lacquer-wet-shadow: 0 8px 32px -4px rgba(2, 6, 18, 0.8), 0 2px 8px rgba(0, 0, 0, 0.6), inset 0 1px 1px rgba(255, 255, 255, 0.35);
+  --lacquer-wet-hover-shadow: 0 16px 48px -4px rgba(2, 6, 18, 0.95), 0 0 28px rgba(197, 160, 89, 0.28), inset 0 1px 2px rgba(255, 255, 255, 0.65);
+  --lacquer-ease: cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+/* ==========================================================================
+   STILL WEBPAGE BACKGROUND ENFORCEMENT
+   ========================================================================== */
+body {
+  background-attachment: fixed !important;
+  animation: none !important;
+}
+
+#screensaver-scene,
+#screensaver-star-canvas,
+#screensaver-planet-glow,
+#screensaver-sun-flare,
+#screensaver-water-shimmer,
+#screensaver-city-glow,
+.glow-container,
+.glow-orb {
+  display: none !important;
+  animation: none !important;
+  transform: none !important;
+}
+
+/* ==========================================================================
+   1. HIGH-GLOSS TILES, CARDS & CONTAINERS
+   ========================================================================== */
+.card, .tile, .app-card, .stat-card, .stat-tile, .glass-panel,
+.player-card, .difficulty-card, .score-card, .remediation-card,
+.hero-readiness-widget, .dash-metric-card, .metric-box, .module-card,
+.feature-card, .board-card, .lesson-card, .drill-card, .summary-card,
+.plan-card, .pricing-card, .inventory-card, .status-card, .widget-card,
+.routine-box, .quick-actions,
+[data-gloss="tile"],
+[class*="card"]:not(.no-gloss),
+[class*="tile"]:not(.no-gloss) {
+  position: relative !important;
+  background: linear-gradient(145deg, #0E1D3A 0%, rgba(14, 29, 58, 0.95) 55%, rgba(5, 11, 24, 0.98) 100%) !important;
+  border: 1px solid rgba(197, 160, 89, 0.28) !important;
+  border-top: 1px solid rgba(255, 255, 255, 0.4) !important;
+  border-radius: 16px;
+  box-shadow: var(--lacquer-wet-shadow) !important;
+  transition: transform 0.28s var(--lacquer-ease), box-shadow 0.28s var(--lacquer-ease), border-color 0.28s ease !important;
+  overflow: hidden !important;
+  will-change: transform, box-shadow;
+}
+
+/* 1A. Curved Specular Glare Shield (The Clear-Coat Shield) */
+.card::before, .tile::before, .app-card::before, .stat-card::before, .stat-tile::before, .glass-panel::before,
+.player-card::before, .difficulty-card::before, .score-card::before, .remediation-card::before,
+.hero-readiness-widget::before, .dash-metric-card::before, .metric-box::before, .module-card::before,
+.feature-card::before, .board-card::before, .lesson-card::before, .drill-card::before, .summary-card::before,
+.plan-card::before, .pricing-card::before, .inventory-card::before, .status-card::before, .widget-card::before,
+.routine-box::before, .quick-actions::before,
+[data-gloss="tile"]::before,
+[class*="card"]:not(.no-gloss)::before,
+[class*="tile"]:not(.no-gloss)::before {
+  content: '' !important;
+  position: absolute !important;
+  inset: 0 !important;
+  pointer-events: none !important;
+  background: linear-gradient(135deg, rgba(255, 255, 255, 0.4) 0%, rgba(255, 255, 255, 0.05) 35%, transparent 60%) !important;
+  border-top: 1px solid rgba(255, 255, 255, 0.4) !important;
+  border-radius: inherit !important;
+  z-index: 1 !important;
+}
+
+/* 1B. Dynamic Pointer-Tracked Specular Flare */
+.card::after, .tile::after, .app-card::after, .stat-card::after, .stat-tile::after, .glass-panel::after,
+.player-card::after, .difficulty-card::after, .score-card::after, .remediation-card::after,
+.hero-readiness-widget::after, .dash-metric-card::after, .metric-box::after, .module-card::after,
+.feature-card::after, .board-card::after, .lesson-card::after, .drill-card::after, .summary-card::after,
+.plan-card::after, .pricing-card::after, .inventory-card::after, .status-card::after, .widget-card::after,
+.routine-box::after, .quick-actions::after,
+[data-gloss="tile"]::after,
+[class*="card"]:not(.no-gloss)::after,
+[class*="tile"]:not(.no-gloss)::after {
+  content: '' !important;
+  position: absolute !important;
+  inset: 0 !important;
+  pointer-events: none !important;
+  background: radial-gradient(circle 220px at var(--mouse-x, 50%) var(--mouse-y, 50%), rgba(255, 255, 255, 0.22), transparent 70%) !important;
+  border-radius: inherit !important;
+  opacity: 0 !important;
+  transition: opacity 0.3s ease !important;
+  z-index: 2 !important;
+}
+
+/* Hover Optical Bloom activation */
+.card:hover::after, .tile:hover::after, .app-card:hover::after, .stat-card:hover::after, .stat-tile:hover::after, .glass-panel:hover::after,
+.player-card:hover::after, .difficulty-card:hover::after, .score-card:hover::after, .remediation-card:hover::after,
+.hero-readiness-widget:hover::after, .dash-metric-card:hover::after, .metric-box:hover::after, .module-card:hover::after,
+.feature-card:hover::after, .board-card:hover::after, .lesson-card:hover::after, .drill-card:hover::after, .summary-card:hover::after,
+.plan-card:hover::after, .pricing-card:hover::after, .inventory-card:hover::after, .status-card:hover::after, .widget-card:hover::after,
+.routine-box:hover::after, .quick-actions:hover::after,
+[data-gloss="tile"]:hover::after,
+[class*="card"]:not(.no-gloss):hover::after,
+[class*="tile"]:not(.no-gloss):hover::after {
+  opacity: 1 !important;
+}
+
+/* Tile Hover Elevation & Specular Reflection */
+.card:hover, .tile:hover, .app-card:hover, .stat-card:hover, .stat-tile:hover, .glass-panel:hover,
+.player-card:hover, .difficulty-card:hover, .score-card:hover, .remediation-card:hover,
+.hero-readiness-widget:hover, .dash-metric-card:hover, .metric-box:hover, .module-card:hover,
+.feature-card:hover, .board-card:hover, .lesson-card:hover, .drill-card:hover, .summary-card:hover,
+.plan-card:hover, .pricing-card:hover, .inventory-card:hover, .status-card:hover, .widget-card:hover,
+.routine-box:hover, .quick-actions:hover,
+[data-gloss="tile"]:hover,
+[class*="card"]:not(.no-gloss):hover,
+[class*="tile"]:not(.no-gloss):hover {
+  transform: translateY(-4px) scale(1.008) !important;
+  border-color: rgba(223, 186, 115, 0.85) !important;
+  border-top-color: rgba(255, 255, 255, 0.85) !important;
+  box-shadow: var(--lacquer-wet-hover-shadow) !important;
+}
+
+/* Protect Child Content under specular overlays */
+.card > *, .tile > *, .app-card > *, .stat-card > *, .stat-tile > *, .glass-panel > *,
+[data-gloss="tile"] > * {
+  position: relative;
+  z-index: 3;
+}
+
+/* ==========================================================================
+   2. HOVER GLARE SWEEP SHEEN (BUTTONS & PILLS)
+   ========================================================================== */
+.btn, button, .pill, .chip, .cat-pill, .nav-tab,
+.action-pill-btn, .btn-primary, .btn-secondary,
+[class*="btn"]:not(.no-sheen),
+[class*="pill"]:not(.no-sheen) {
+  position: relative !important;
+  overflow: hidden !important;
+}
+
+.btn::after, button::after, .pill::after, .chip::after, .cat-pill::after, .nav-tab::after,
+.action-pill-btn::after, .btn-primary::after, .btn-secondary::after,
+[class*="btn"]:not(.no-sheen)::after,
+[class*="pill"]:not(.no-sheen)::after {
+  content: '' !important;
+  position: absolute !important;
+  top: 0 !important;
+  left: -130% !important;
+  width: 65% !important;
+  height: 100% !important;
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.45), transparent) !important;
+  transform: skewX(-25deg) !important;
+  pointer-events: none !important;
+  transition: none !important;
+  z-index: 5 !important;
+}
+
+.btn:hover::after, button:hover::after, .pill:hover::after, .chip:hover::after, .cat-pill:hover::after, .nav-tab:hover::after,
+.action-pill-btn:hover::after, .btn-primary:hover::after, .btn-secondary:hover::after,
+[class*="btn"]:not(.no-sheen):hover::after,
+[class*="pill"]:not(.no-sheen):hover::after {
+  left: 170% !important;
+  transition: left 0.65s var(--lacquer-ease) !important;
+}
+
+/* ==========================================================================
+   3. HIGH-GLOSS LEFT-PANEL NAVIGATION SYSTEM
+   ========================================================================== */
+.app-shell, .layout-container {
+  display: flex !important;
+  min-height: 100vh !important;
+  position: relative !important;
+  z-index: 1 !important;
+}
+
+.left-panel, .sidebar-nav, .hub-sidebar {
+  width: 290px !important;
+  min-width: 290px !important;
+  max-width: 290px !important;
+  height: 100vh !important;
+  position: sticky !important;
+  top: 0 !important;
+  left: 0 !important;
+  display: flex !important;
+  flex-direction: column !important;
+  justify-content: space-between !important;
+  background: linear-gradient(180deg, #0E1D3A 0%, rgba(11, 22, 44, 0.98) 45%, rgba(5, 11, 24, 0.99) 100%) !important;
+  border-right: 1px solid rgba(197, 160, 89, 0.28) !important;
+  border-top: 1px solid rgba(255, 255, 255, 0.4) !important;
+  box-shadow: 8px 0 32px -4px rgba(2, 6, 18, 0.85), inset -1px 0 1px rgba(255, 255, 255, 0.15) !important;
+  padding: 1.5rem 1.25rem !important;
+  overflow-y: auto !important;
+  overflow-x: hidden !important;
+  z-index: 100 !important;
+  backdrop-filter: blur(20px) !important;
+  -webkit-backdrop-filter: blur(20px) !important;
+}
+
+/* Clear-coat Glare Shield for Left Panel */
+.left-panel::before, .sidebar-nav::before, .hub-sidebar::before {
+  content: '' !important;
+  position: absolute !important;
+  inset: 0 !important;
+  pointer-events: none !important;
+  background: linear-gradient(160deg, rgba(255, 255, 255, 0.25) 0%, rgba(255, 255, 255, 0.03) 30%, transparent 60%) !important;
+  border-top: 1px solid rgba(255, 255, 255, 0.4) !important;
+  z-index: 1 !important;
+}
+
+.left-panel > *, .sidebar-nav > *, .hub-sidebar > * {
+  position: relative !important;
+  z-index: 3 !important;
+}
+
+/* Brand Section */
+.sidebar-brand {
+  display: flex !important;
+  align-items: center !important;
+  gap: 0.85rem !important;
+  padding-bottom: 1.25rem !important;
+  margin-bottom: 1.25rem !important;
+  border-bottom: 1px solid rgba(197, 160, 89, 0.22) !important;
+  text-decoration: none !important;
+}
+
+.sidebar-logo-gem {
+  width: 40px !important;
+  height: 40px !important;
+  min-width: 40px !important;
+  border-radius: 10px !important;
+  background: linear-gradient(135deg, #DFBA73 0%, #C5A059 100%) !important;
+  border-top: 1px solid rgba(255, 255, 255, 0.8) !important;
+  box-shadow: 0 4px 14px rgba(197, 160, 89, 0.4), inset 0 1px 2px rgba(255, 255, 255, 0.7) !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  font-size: 1.3rem !important;
+  color: #050B18 !important;
+  font-weight: 800 !important;
+}
+
+.sidebar-brand-text h2 {
+  font-size: 1.15rem !important;
+  font-weight: 700 !important;
+  color: #FFFFFF !important;
+  letter-spacing: -0.01em !important;
+  line-height: 1.2 !important;
+  margin: 0 !important;
+}
+
+.sidebar-brand-text h2 span {
+  color: #DFBA73 !important;
+}
+
+.sidebar-badge {
+  display: inline-block !important;
+  font-size: 0.68rem !important;
+  font-weight: 700 !important;
+  text-transform: uppercase !important;
+  letter-spacing: 0.08em !important;
+  color: #DFBA73 !important;
+  background: rgba(197, 160, 89, 0.14) !important;
+  border: 1px solid rgba(197, 160, 89, 0.3) !important;
+  border-radius: 4px !important;
+  padding: 0.15rem 0.45rem !important;
+  margin-top: 0.25rem !important;
+}
+
+/* Nav Groups & Links */
+.sidebar-section-title {
+  font-size: 0.72rem !important;
+  font-weight: 700 !important;
+  text-transform: uppercase !important;
+  letter-spacing: 0.1em !important;
+  color: #DFBA73 !important;
+  margin: 1.1rem 0 0.5rem 0.5rem !important;
+}
+
+.sidebar-nav-list {
+  list-style: none !important;
+  margin: 0 !important;
+  padding: 0 !important;
+  display: flex !important;
+  flex-direction: column !important;
+  gap: 0.35rem !important;
+}
+
+.sidebar-nav-item, .sidebar-link {
+  display: flex !important;
+  align-items: center !important;
+  gap: 0.75rem !important;
+  min-height: 48px !important;
+  padding: 0.65rem 0.95rem !important;
+  border-radius: 10px !important;
+  font-size: 0.92rem !important;
+  font-weight: 600 !important;
+  color: #94A3B8 !important;
+  text-decoration: none !important;
+  background: transparent !important;
+  border: 1px solid transparent !important;
+  border-left: 3px solid transparent !important;
+  transition: all 0.22s var(--lacquer-ease) !important;
+  cursor: pointer !important;
+}
+
+.sidebar-nav-item:hover, .sidebar-link:hover {
+  color: #FFFFFF !important;
+  background: rgba(14, 29, 58, 0.85) !important;
+  border-color: rgba(197, 160, 89, 0.25) !important;
+  border-left: 3px solid #DFBA73 !important;
+  box-shadow: 0 4px 16px -2px rgba(2, 6, 18, 0.6), inset 0 1px 1px rgba(255, 255, 255, 0.2) !important;
+  transform: translateX(3px) !important;
+}
+
+.sidebar-nav-item.active, .sidebar-link.active {
+  color: #FFFFFF !important;
+  background: linear-gradient(90deg, rgba(197, 160, 89, 0.2) 0%, rgba(14, 29, 58, 0.9) 100%) !important;
+  border: 1px solid rgba(197, 160, 89, 0.45) !important;
+  border-left: 3px solid #DFBA73 !important;
+  box-shadow: 0 4px 18px rgba(197, 160, 89, 0.2), inset 0 1px 1px rgba(255, 255, 255, 0.3) !important;
+}
+
+.sidebar-nav-item .nav-icon, .sidebar-link .nav-icon {
+  font-size: 1.15rem !important;
+  width: 22px !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+}
+
+.sidebar-nav-item .nav-count, .sidebar-link .nav-count {
+  margin-left: auto !important;
+  font-size: 0.76rem !important;
+  background: rgba(5, 11, 24, 0.8) !important;
+  color: #DFBA73 !important;
+  border: 1px solid rgba(197, 160, 89, 0.3) !important;
+  padding: 0.15rem 0.5rem !important;
+  border-radius: 12px !important;
+}
+
+/* Sidebar Footer */
+.sidebar-footer {
+  margin-top: auto !important;
+  padding-top: 1.25rem !important;
+  border-top: 1px solid rgba(197, 160, 89, 0.22) !important;
+  display: flex !important;
+  flex-direction: column !important;
+  gap: 0.75rem !important;
+}
+
+/* Main Viewport Container */
+.main-viewport, .main-content {
+  flex: 1 !important;
+  min-width: 0 !important;
+  padding: 2rem 2.5rem !important;
+  max-width: 1500px !important;
+  position: relative !important;
+  z-index: 2 !important;
+}
+
+/* Responsive adjustments */
+@media (max-width: 980px) {
+  .app-shell, .layout-container {
+    flex-direction: column !important;
+  }
+  .left-panel, .sidebar-nav, .hub-sidebar {
+    width: 100% !important;
+    min-width: 100% !important;
+    max-width: 100% !important;
+    height: auto !important;
+    position: static !important;
+    border-right: none !important;
+    border-bottom: 1px solid rgba(197, 160, 89, 0.28) !important;
+  }
+  .main-viewport, .main-content {
+    padding: 1.5rem 1rem !important;
+  }
+}
+
+
