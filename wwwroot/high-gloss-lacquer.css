@@ -320,7 +320,7 @@ body {
   background: transparent !important;
   border: 1px solid transparent !important;
   border-left: 3px solid transparent !important;
-  transition: all 0.22s var(--lacquer-ease) !important;
+  transition: transform 0.22s var(--lacquer-ease), opacity 0.22s var(--lacquer-ease), background-color 0.22s var(--lacquer-ease), border-color 0.22s var(--lacquer-ease), color 0.22s var(--lacquer-ease), box-shadow 0.22s var(--lacquer-ease) !important;
   cursor: pointer !important;
 }
 
