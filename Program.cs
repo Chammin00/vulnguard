@@ -53,6 +53,7 @@ if (!app.Environment.IsDevelopment())
 }
 
 app.UseHttpsRedirection();
+app.UseMiddleware<vulnerability_management.Middleware.SecurityHardeningMiddleware>();
 app.UseStaticFiles();
 
 app.UseRouting();
